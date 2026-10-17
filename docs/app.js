@@ -52,7 +52,7 @@ function init() {
 
   // แผนที่
   map = L.map("map", { zoomSnap: 0.25, minZoom: 9, maxZoom: 16 });
-  const dark = () => document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
+  const dark = () => false;   // โทนสว่างเสมอ
   const setTiles = () => {
     if (tiles) map.removeLayer(tiles);
     tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -61,7 +61,6 @@ function init() {
     tiles.bringToBack();
   };
   setTiles();
-  matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => { setTiles(); render(); });
   distLayer = L.geoJSON(DIST, { style: () => ({ weight: 1, fillOpacity: .3 }) }).addTo(map);
   map.fitBounds(distLayer.getBounds(), { padding: [10, 10] });
   distLayer.eachLayer(l => l.on("click", () => select(l.feature.properties.code)));
