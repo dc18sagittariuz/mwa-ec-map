@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>แผนที่ความนำไฟฟ้าน้ำประปา</title>
+<meta name="description" content="ติดตามและคาดการณ์ค่าความนำไฟฟ้า (EC) ของน้ำประปา กรุงเทพฯ นนทบุรี สมุทรปราการ ช่วงน้ำเค็มรุก">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>ความนำไฟฟ้า (EC) ของน้ำประปา กรุงเทพฯ · นนทบุรี · สมุทรปราการ</h1>
+      <p class="sub">ค่าวัดจริงและคาดการณ์ล่วงหน้า 48 ชั่วโมง ตามเวลาที่น้ำเดินทางจากจุดสูบน้ำดิบสำแลถึงแต่ละพื้นที่</p>
+    </div>
+    <div class="controls">
+      <select id="pick" aria-label="ค้นหาเขต/อำเภอ"><option value="">ค้นหาเขต/อำเภอ…</option></select>
+    </div>
+  </header>
+
+  <div class="status" id="status">กำลังโหลดข้อมูล…</div>
+
+  <div class="timebar" id="timebar">
+    <span class="lbl">ช่วงเวลา</span>
+    <input type="range" id="hr" min="0" max="8" step="1" value="0" aria-label="ชั่วโมงข้างหน้า">
+    <span class="t" id="tlabel">ตอนนี้</span>
+  </div>
+
+  <div class="main">
+    <div class="mapbox">
+      <div id="map" role="img" aria-label="แผนที่เขต/อำเภอ ระบายสีตามค่า EC"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <aside>
+      <section class="panel detail" id="detail"></section>
+      <section class="panel outlook" id="outlook"></section>
+      <section class="panel">
+        <h2>น้ำดิบและโรงผลิต</h2>
+        <div id="srcBox"></div>
+      </section>
+      <section class="panel">
+        <h2>สรุปรายจังหวัด</h2>
+        <div id="prov"></div>
+      </section>
+      <section class="panel">
+        <h2 id="rankTitle">ค่าสูงสุด 6 อันดับ</h2>
+        <ol class="rank" id="rank"></ol>
+      </section>
+    </aside>
+  </div>
+
+  <footer>
+    <div>โครงการส่วนตัว ไม่ใช่ระบบทางการของการประปานครหลวง · ค่าคาดการณ์ใช้เวลาเดินทางของน้ำจากข้อมูลปี 2564 และยังไม่ได้รับการตรวจสอบ</div>
+    <div>ข้อมูล: twqonline.mwa.co.th (น้ำประปา), rwc.mwa.co.th (น้ำดิบ), กรมชลประทาน SWOC (น้ำจากเขื่อน), Open-Meteo (น้ำขึ้นน้ำลง) · ขอบเขตเขต/อำเภอ: OpenGISData-Thailand · แผนที่พื้นหลัง © OpenStreetMap © CARTO</div>
+  </footer>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="app.js"></script>
+</body>
+</html>
