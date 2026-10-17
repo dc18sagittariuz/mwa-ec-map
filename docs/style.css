@@ -87,8 +87,9 @@ footer{font-size:12px;color:var(--muted);display:grid;gap:4px}
 .timebar input[type=range]{accent-color:var(--accent)}
 .outlook .pill{font-size:13px;padding:2px 10px}
 .outlook ul{margin:8px 0 0;padding-left:18px;font-size:13px}
-.leaflet-tile-pane{filter:saturate(.35)}
-:root[data-theme="dark"] .leaflet-tile-pane{filter:none}
+/* แผนที่ OSM โทนจาง ไม่แย่งสีข้อมูล; โหมดมืดกลับสี */
+.tiles-light{filter:grayscale(1) contrast(.9) brightness(1.06)}
+.tiles-dark{filter:grayscale(1) invert(1) brightness(.85) contrast(.9)}
 .leaflet-control-attribution{font-size:10px;background:var(--surface)!important;color:var(--muted)}
 .leaflet-control-attribution a{color:var(--muted)}
 .unknown-sw{background-image:repeating-linear-gradient(45deg,var(--nodata) 0 3px,transparent 3px 6px)}

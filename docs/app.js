@@ -37,8 +37,9 @@ function init(riverGeo) {
   const dark = () => document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
   const setTiles = () => {
     if (tiles) map.removeLayer(tiles);
-    tiles = L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark() ? "dark_all" : "light_all"}/{z}/{x}/{y}{r}.png`, {
-      subdomains: "abcd", maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>' }).addTo(map);
+    tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      className: dark() ? "tiles-dark" : "tiles-light" }).addTo(map);
   };
   setTiles();
   matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => { setTiles(); render(); });
@@ -73,7 +74,7 @@ function render() {
   distLayer.eachLayer(l => {
     const p = l.feature.properties, v = distVal(p.code), li = lvlOf(v), sel = selected === p.code;
     const unk = v == null;
-    l.setStyle({ fillColor: colorOf(li), color: sel ? ink : surf, weight: sel ? 3 : 1, fillOpacity: unk ? .25 : .62, dashArray: unk ? "3 3" : null });
+    l.setStyle({ fillColor: colorOf(li), color: sel ? ink : surf, weight: sel ? 3 : 1, fillOpacity: unk ? .2 : .5, dashArray: unk ? "3 3" : null });
     const parts = (D.districts[p.code]?.parts || []).slice(0, 3).map(x => `สถานีสูบจ่าย${x[0]} ${Math.round(x[1] * 100)}%`).join(", ");
     l.bindTooltip(`<b>${dName(p)}</b><br>EC ${fmt(v)} µS/cm · ${unk ? (hi ? "ยังคาดการณ์ไม่ได้" : "ไม่มีข้อมูล") : NAMES[li]}<br><span style="opacity:.75">${parts}</span>`, { sticky: true });
     (byProv[p.pro] ??= [0, 0, 0, 0, 0, 0])[li < 0 ? 5 : li]++;
