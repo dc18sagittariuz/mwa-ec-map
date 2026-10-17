@@ -18,7 +18,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outlin
 .num,.kpi-v b,.v{font-variant-numeric:tabular-nums}
 
 /* ---- แถบนำทาง ---- */
-.topbar{position:sticky;top:0;z-index:1000;background:var(--surface);border-bottom:1px solid var(--line)}
+.topbar{position:sticky;top:0;z-index:1100;background:var(--surface);border-bottom:1px solid var(--line)}
 .topbar-in{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:16px 28px;flex-wrap:wrap;padding-block:10px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
 .drop{width:22px;height:30px;fill:var(--accent)}
@@ -150,3 +150,34 @@ select{font-size:13px;padding:6px 10px;border-radius:10px;border:1px solid var(-
 .foot{border-top:1px solid var(--line);background:var(--soft)}
 .foot-in{max-width:1400px;margin:0 auto;display:flex;flex-wrap:wrap;gap:6px 24px;justify-content:space-between;font-size:12px;color:var(--muted);padding-block:12px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---- จอเล็ก / มือถือแนวนอน: แถบเมนูบรรทัดเดียว ---- */
+.ushort{display:none}
+@media (max-width:900px),(max-height:540px){
+  .topbar-in{flex-wrap:nowrap;gap:10px;padding-block:4px}
+  .brand{gap:6px;flex:none}
+  .brand-sep,.brand-sub{display:none}
+  .brand-name{font-size:17px}
+  .topbar .drop{width:16px;height:22px}
+  .tabs{margin:0;flex:1 1 auto;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;justify-content:center;min-width:0}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs button{padding:8px 10px;font-size:14px;white-space:nowrap;border-bottom-width:2px}
+  .updated{padding:4px 10px;font-size:12px;white-space:nowrap;flex:none}
+  .updated svg{width:13px;height:13px}
+  .ulong{display:none}.ushort{display:inline}
+}
+@media (max-width:480px){.brand-name{display:none}.tabs{justify-content:flex-start}}
+/* แท็บแผนที่: ซ่อนส่วนหัว ให้แผนที่ใช้ความสูงของจอ */
+body.mapmode .hero{display:none}
+body.mapmode .wrap{padding-block:10px 16px}
+body.mapmode .grid.mapfull #map{height:calc(100dvh - 150px);min-height:260px}
+@media (max-height:540px){
+  .hero-in{padding-block:14px 30px}
+  .drop.big{width:34px;height:46px}
+  .kpi{padding:10px 14px}.kpi-ic{width:40px;height:40px}.kpi-v b{font-size:26px}
+  body.mapmode .mapcard .card-h{padding:8px 12px 0;margin-bottom:8px}
+  body.mapmode .mapcard .card-h h2{display:none}
+  body.mapmode .grid.mapfull #map{height:calc(100dvh - 110px)}
+  .legend{left:8px;bottom:8px;padding:6px 10px;gap:4px 10px;font-size:11px}
+  .legend .it small{display:none}
+}

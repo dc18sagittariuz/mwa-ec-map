@@ -83,7 +83,9 @@ function init() {
     document.getElementById("viewOverview").hidden = tabs[id] === "x";
     document.getElementById("viewMethod").hidden = tabs[id] !== "x";
     document.querySelector(".grid").classList.toggle("mapfull", tabs[id] === "m");
-    setTimeout(() => map.invalidateSize(), 50);
+    document.body.classList.toggle("mapmode", tabs[id] === "m");
+    window.scrollTo(0, 0);
+    setTimeout(() => { map.invalidateSize(); if (!selected) map.fitBounds(distLayer.getBounds(), { padding: [10, 10] }); }, 60);
   });
   document.getElementById("mLevels").innerHTML = levelList();
   render();
@@ -112,7 +114,7 @@ function render() {
   });
   const t = hTime(hi);
   document.querySelector("#whenPill span").textContent = tTH(t);
-  document.querySelector("#updated span").textContent = `อัปเดตล่าสุด ${tTH(D.generated)}`;
+  document.querySelector("#updated span").innerHTML = `<span class="ulong">อัปเดตล่าสุด ${tTH(D.generated)}</span><span class="ushort">${tShort(D.generated)} น.</span>`;
   renderKPI(); renderLegend(); renderDetail(); renderProv(); renderSrc(); renderTrend(); renderOutlook();
 }
 
