@@ -2,183 +2,241 @@
 // ---------- ตัวช่วย ----------
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const LVC = ["--l0", "--l1", "--l2", "--l3", "--l4"];
-let D, CUTS, NAMES, RATIO;
+let D, CUTS, NAMES, RATIO, DIST;
 const lvlOf = ec => { if (ec == null) return -1; let i = 0; while (i < CUTS.length && ec >= CUTS[i]) i++; return i; };
 const colorOf = i => i < 0 ? css("--nodata") : css(LVC[i]);
 const fmt = v => v == null ? "–" : Math.round(v).toLocaleString("th-TH");
 const salt = v => (v * RATIO).toFixed(2);
 const SRC = { CP: "เจ้าพระยา", MK: "แม่กลอง" };
-const HOW = { measured: "ค่าวัดจริง", outlet: "จากค่าทางออกโรงผลิต", siphon: "จากค่าที่ไซฟอนรังสิต", samlae: "จากค่าที่สำแล", persist: "คงค่าล่าสุด", unknown: "ยังคาดการณ์ไม่ได้" };
-const tTH = iso => { if (!iso) return "–"; const d = new Date(iso); return d.toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" }); };
+const HOW = { measured: "ค่าวัดจริง", outlet: "คาดจากทางออกโรงผลิต", siphon: "คาดจากไซฟอนรังสิต", samlae: "คาดจากจุดสูบสำแล", persist: "คงค่าล่าสุด", unknown: "ยังคาดการณ์ไม่ได้" };
+const PROV = { "10": "กรุงเทพมหานคร", "12": "นนทบุรี", "11": "สมุทรปราการ" };
+const TZ = { timeZone: "Asia/Bangkok" };
+const tTH = (d, o = {}) => d ? new Date(d).toLocaleString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", ...TZ, ...o }) + " น." : "–";
+const tShort = d => new Date(d).toLocaleString("th-TH", { hour: "2-digit", minute: "2-digit", ...TZ });
 const dName = p => (p.pro === "กรุงเทพมหานคร" ? "เขต" : "อ.") + p.th;
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const pinSVG = (c, w = 18) => `<svg class="pin" width="${w}" height="${w * 1.36}" viewBox="0 0 22 30"><path d="M11 29s9-8.4 9-16a9 9 0 1 0-18 0c0 7.6 9 16 9 16Z" fill="${c}" stroke="#fff" stroke-width="1.6"/><circle cx="11" cy="12.5" r="3.3" fill="#fff"/></svg>`;
+const statusPill = li => li < 0 ? `<span class="status" style="background:var(--soft);color:var(--muted)">ไม่มีข้อมูล</span>`
+  : `<span class="status" style="background:color-mix(in srgb,${css(LVC[li])} 18%,var(--surface));color:color-mix(in srgb,${css(LVC[li])} 70%,var(--ink))">${NAMES[li]}</span>`;
 
-let hi = 0, selected = null, map, distLayer, river, stLayer, markers = {}, DIST, tiles;
+let hi = 0, selected = null, map, distLayer, markers = {}, tiles;
 
+// ---------- โหลด ----------
 async function load() {
-  const [d, g, r] = await Promise.all([
+  const [d, g] = await Promise.all([
     fetch("data/latest.json", { cache: "no-store" }).then(x => x.json()),
     fetch("data/districts.json").then(x => x.json()),
-    fetch("data/river.json").then(x => x.json()),
   ]);
   D = d; DIST = g; CUTS = d.levels; NAMES = d.level_names; RATIO = d.salt_per_ec;
-  init(r);
+  init();
 }
 
-function hlabel(i) { const h = D.horizons[i]; return h ? `+${h} ชม. (${tTH(new Date(new Date(D.generated).getTime() + h * 3600e3).toISOString())})` : "ตอนนี้"; }
+const hTime = i => new Date(new Date(D.generated).getTime() + D.horizons[i] * 3600e3);
+const hName = i => D.horizons[i] ? `คาดการณ์ +${D.horizons[i]} ชม.` : "แสดงค่าปัจจุบัน";
 
-function init(riverGeo) {
-  const hr = document.getElementById("hr");
-  hr.max = D.horizons.length - 1;
-  hr.oninput = () => { hi = +hr.value; document.getElementById("tlabel").textContent = hlabel(hi); render(); };
-  document.getElementById("tlabel").textContent = hlabel(0);
+function setH(i) {
+  hi = i;
+  document.getElementById("hsel").value = i;
+  document.querySelectorAll("#hseg button").forEach(b => b.setAttribute("aria-pressed", +b.dataset.i === i));
+  render();
+}
 
-  map = L.map("map", { zoomSnap: 0.25, minZoom: 9, maxZoom: 15 });
+function init() {
+  // ช่วงเวลา
+  const hsel = document.getElementById("hsel");
+  hsel.innerHTML = D.horizons.map((h, i) => `<option value="${i}">${hName(i)}</option>`).join("");
+  hsel.onchange = () => setH(+hsel.value);
+  const quick = [0, 6, 24, 48].map(h => D.horizons.indexOf(h)).filter(i => i >= 0);
+  document.getElementById("hseg").innerHTML = quick.map(i => `<button data-i="${i}" aria-pressed="${i === 0}">${D.horizons[i] ? D.horizons[i] + " ชม." : "ตอนนี้"}</button>`).join("");
+  document.querySelectorAll("#hseg button").forEach(b => b.onclick = () => setH(+b.dataset.i));
+
+  // แผนที่
+  map = L.map("map", { zoomSnap: 0.25, minZoom: 9, maxZoom: 16 });
   const dark = () => document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
   const setTiles = () => {
     if (tiles) map.removeLayer(tiles);
     tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      className: dark() ? "tiles-dark" : "tiles-light" }).addTo(map);
+      maxZoom: 19, className: dark() ? "tiles-dark" : "tiles-light",
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
+    tiles.bringToBack();
   };
   setTiles();
   matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => { setTiles(); render(); });
-
-  distLayer = L.geoJSON(DIST, { style: () => ({ weight: 1, fillOpacity: .62 }) }).addTo(map);
-  river = L.geoJSON(riverGeo, { interactive: false, style: () => ({ color: css("--river"), weight: 3, opacity: .0 }) }).addTo(map); // พื้นหลังมีแม่น้ำจริงแล้ว
+  distLayer = L.geoJSON(DIST, { style: () => ({ weight: 1, fillOpacity: .3 }) }).addTo(map);
   map.fitBounds(distLayer.getBounds(), { padding: [10, 10] });
-  stLayer = L.layerGroup().addTo(map);
-  Object.entries(D.stations).forEach(([c, s]) => { markers[c] = L.circleMarker([s.lat, s.lon], { radius: c.startsWith("SP") ? 6 : 4.5, weight: 1.5, fillOpacity: 1 }).addTo(stLayer); });
   distLayer.eachLayer(l => l.on("click", () => select(l.feature.properties.code)));
+  [["นนทบุรี", 13.885, 100.43], ["กรุงเทพมหานคร", 13.76, 100.57], ["สมุทรปราการ", 13.585, 100.69]].forEach(([n, la, lo]) =>
+    L.tooltip({ permanent: true, direction: "center", className: "plabel", interactive: false }).setLatLng([la, lo]).setContent(n).addTo(map));
+  Object.entries(D.stations).forEach(([c, s]) => {
+    markers[c] = L.marker([s.lat, s.lon], { icon: L.divIcon({ className: "mk", html: "", iconSize: [18, 24], iconAnchor: [9, 24], popupAnchor: [0, -22] }) }).addTo(map);
+  });
 
+  // ค้นหาเขต
   const pick = document.getElementById("pick");
   DIST.features.map(f => f.properties).sort((a, b) => a.pro.localeCompare(b.pro, "th") || a.th.localeCompare(b.th, "th"))
     .forEach(p => { const o = document.createElement("option"); o.value = p.code; o.textContent = `${p.th} (${p.pro === "กรุงเทพมหานคร" ? "กทม." : p.pro})`; pick.appendChild(o); });
   pick.onchange = () => select(pick.value || null, true);
-  renderStatus(); render();
+
+  // แท็บ
+  const tabs = { tabOverview: "o", tabMap: "m", tabMethod: "x" };
+  Object.keys(tabs).forEach(id => document.getElementById(id).onclick = () => {
+    Object.keys(tabs).forEach(t => document.getElementById(t).setAttribute("aria-selected", t === id));
+    document.getElementById("viewOverview").hidden = tabs[id] === "x";
+    document.getElementById("viewMethod").hidden = tabs[id] !== "x";
+    document.querySelector(".grid").classList.toggle("mapfull", tabs[id] === "m");
+    setTimeout(() => map.invalidateSize(), 50);
+  });
+  document.getElementById("mLevels").innerHTML = levelList();
+  render();
 }
 
-function renderStatus() {
-  const s = D.status, names = { twqms: "น้ำประปา", rwc: "น้ำดิบ", rid: "น้ำจากเขื่อน", tide: "น้ำขึ้นน้ำลง" };
-  const chips = Object.entries(names).map(([k, n]) => {
-    const ok = s[k] && s[k].ok;
-    return `<span class="chip" title="${esc(ok ? (s[k].newest ? "ข้อมูลล่าสุด " + tTH(s[k].newest) : "ดึงสำเร็จ") : (s[k]?.error || "ไม่มีข้อมูล"))}"><i style="background:${ok ? css("--l0") : css("--l3")}"></i>${n}</span>`;
-  }).join("");
-  document.getElementById("status").innerHTML = `<span>อัปเดต ${tTH(D.generated)} น. · ทุก 30 นาที</span>${chips}`;
+function levelList() {
+  let lo = 0;
+  return NAMES.map((n, i) => { const h = CUTS[i]; const s = `<div class="legend-row" style="display:flex;gap:8px;align-items:center;margin:4px 0">${pinSVG(css(LVC[i]), 14)} <b>${n}</b> <span class="small">${h == null ? "≥ " + lo.toLocaleString() : lo.toLocaleString() + "–" + h.toLocaleString()} µS/cm (~${salt(lo)}${h == null ? "+" : "–" + salt(h)} g/L)</span></div>`; lo = h; return s; }).join("");
 }
 
-function distVal(code) { const d = D.districts[code]; return d ? d.f[hi] : null; }
-
+// ---------- วาด ----------
 function render() {
-  const surf = css("--surface"), ink = css("--ink"), byProv = {}, ranks = [];
+  const surf = css("--surface"), ink = css("--ink");
   distLayer.eachLayer(l => {
-    const p = l.feature.properties, v = distVal(p.code), li = lvlOf(v), sel = selected === p.code;
-    const unk = v == null;
-    l.setStyle({ fillColor: colorOf(li), color: sel ? ink : surf, weight: sel ? 3 : 1, fillOpacity: unk ? .2 : .5, dashArray: unk ? "3 3" : null });
+    const p = l.feature.properties, v = D.districts[p.code]?.f[hi] ?? null, li = lvlOf(v), sel = selected === p.code;
+    l.setStyle({ fillColor: colorOf(li), color: sel ? ink : surf, weight: sel ? 3 : 1, fillOpacity: v == null ? .12 : .34, dashArray: v == null ? "3 3" : null });
     const parts = (D.districts[p.code]?.parts || []).slice(0, 3).map(x => `สถานีสูบจ่าย${x[0]} ${Math.round(x[1] * 100)}%`).join(", ");
-    l.bindTooltip(`<b>${dName(p)}</b><br>EC ${fmt(v)} µS/cm · ${unk ? (hi ? "ยังคาดการณ์ไม่ได้" : "ไม่มีข้อมูล") : NAMES[li]}<br><span style="opacity:.75">${parts}</span>`, { sticky: true });
-    (byProv[p.pro] ??= [0, 0, 0, 0, 0, 0])[li < 0 ? 5 : li]++;
-    ranks.push({ id: p.code, label: dName(p), sub: p.pro === "กรุงเทพมหานคร" ? "" : p.pro, v, li });
+    l.bindTooltip(`<b>${dName(p)}</b><br>EC ${fmt(v)} µS/cm · ${v == null ? (hi ? "ยังคาดการณ์ไม่ได้" : "ไม่มีข้อมูล") : NAMES[li]}<br><span style="opacity:.75">${parts}</span>`, { sticky: true });
   });
   Object.entries(D.stations).forEach(([c, s]) => {
     const v = s.f[hi], li = lvlOf(v);
-    markers[c].setStyle({ fillColor: colorOf(li), color: ink });
-    markers[c].bindPopup(`<b>${esc(s.name)}</b> <span class="num">${c}</span><br>EC <b class="num">${fmt(v)}</b> µS/cm${v != null ? ` (~${salt(v)} g/L)` : ""} · ${HOW[s.how[hi]]}<br>`
-      + `รับน้ำจากโรงผลิต${s.plant} (${SRC[s.src]})${s.lag_samlae_h != null ? ` · จากสำแล ~${Math.round(s.lag_samlae_h)} ชม.` : ""}<br>`
-      + `ค่าวัดล่าสุด ${fmt(s.ec)} เมื่อ ${tTH(s.t)}${s.stale ? " (ค้าง)" : ""}`);
+    markers[c].setIcon(L.divIcon({ className: "mk", html: pinSVG(colorOf(li)), iconSize: [18, 24], iconAnchor: [9, 24], popupAnchor: [0, -22] }));
+    markers[c].bindPopup(`<b>${esc(s.name)}</b> <span class="small">${c}</span><br>EC <b>${fmt(v)}</b> µS/cm${v != null ? ` (~${salt(v)} g/L)` : ""}<br><span class="small">${HOW[s.how[hi]]}</span><br>`
+      + `รับน้ำจากโรงผลิต${s.plant} (${SRC[s.src]})${s.lag_samlae_h != null ? `<br>น้ำเดินทางจากสำแล ~${Math.round(s.lag_samlae_h)} ชม.` : ""}<br>`
+      + `<span class="small">ค่าวัดล่าสุด ${fmt(s.ec)} เมื่อ ${tTH(s.t, { year: undefined })}${s.stale ? " (ข้อมูลค้าง)" : ""}</span>`);
   });
-  renderLegend(); renderProv(byProv); renderRank(ranks); renderSrc(); renderOutlook(); renderDetail();
+  const t = hTime(hi);
+  document.querySelector("#whenPill span").textContent = tTH(t);
+  document.querySelector("#updated span").textContent = `อัปเดตล่าสุด ${tTH(D.generated)}`;
+  renderKPI(); renderLegend(); renderDetail(); renderProv(); renderSrc(); renderTrend(); renderOutlook();
+}
+
+function stVals() { return Object.entries(D.stations).map(([c, s]) => ({ c, s, v: s.f[hi] })).filter(x => x.v != null); }
+
+function renderKPI() {
+  const vs = stVals();
+  const avg = vs.length ? vs.reduce((a, b) => a + b.v, 0) / vs.length : null;
+  const mx = vs.reduce((a, b) => (!a || b.v > a.v ? b : a), null);
+  document.getElementById("kN").textContent = vs.length;
+  document.getElementById("kAvg").textContent = fmt(avg);
+  document.getElementById("kMax").textContent = fmt(mx?.v);
+  document.getElementById("kMax").style.color = mx ? colorOf(lvlOf(mx.v)) : "";
+  document.getElementById("kMaxAt").textContent = mx ? mx.s.name : "";
 }
 
 function renderLegend() {
-  let h = `<div class="hd">EC น้ำประปา (µS/cm) · เกณฑ์ชั่วคราว</div>`, lo = 0;
-  NAMES.forEach((n, i) => { const hiV = CUTS[i]; h += `<div class="row"><span class="sw" style="background:${css(LVC[i])}"></span>${n}<span class="num">${hiV == null ? "≥ " + lo.toLocaleString() : lo.toLocaleString() + "–" + hiV.toLocaleString()}</span></div>`; lo = hiV; });
-  h += `<div class="row"><span class="sw unknown-sw"></span>${hi ? "ยังคาดการณ์ไม่ได้ (น้ำยังไม่ผ่านจุดวัด)" : "ไม่มีข้อมูล"}</div>`;
-  document.getElementById("legend").innerHTML = h;
-}
-
-function renderProv(by) {
-  document.getElementById("prov").innerHTML = ["กรุงเทพมหานคร", "นนทบุรี", "สมุทรปราการ"].map(p => {
-    const c = by[p] || [0, 0, 0, 0, 0, 0], tot = c.reduce((a, b) => a + b, 0), bad = c[2] + c[3] + c[4];
-    const segs = c.map((n, i) => n ? `<span style="width:${n / tot * 100}%;background:${i === 5 ? css("--nodata") : css(LVC[i])}" title="${i === 5 ? "ไม่ทราบ" : NAMES[i]}: ${n}"></span>` : "").join("");
-    return `<div class="provrow"><span>${p === "กรุงเทพมหานคร" ? "กรุงเทพฯ" : p}</span><div class="bar">${segs}</div><span class="num">${bad}/${tot}</span></div>`;
-  }).join("") + `<p class="small" style="margin:8px 0 0">จำนวนเขต/อำเภอ · ตัวเลขขวา = ระดับเฝ้าระวังขึ้นไป / ทั้งหมด</p>`;
-}
-
-function renderRank(r) {
-  r = r.filter(x => x.v != null).sort((a, b) => b.v - a.v).slice(0, 6);
-  document.getElementById("rank").innerHTML = r.length ? r.map(x => `<li data-id="${x.id}"><span>${x.label} <span class="small">${x.sub}</span></span><span class="pill num" style="background:${colorOf(x.li)}">${fmt(x.v)}</span></li>`).join("")
-    : `<li class="small">ยังไม่มีค่าในช่วงเวลานี้</li>`;
-  document.querySelectorAll("#rank li[data-id]").forEach(li => li.onclick = () => select(li.dataset.id, true));
-}
-
-function spark(series) {
-  const all = Object.values(series).flat();
-  if (all.length < 2) return `<p class="small" style="margin:10px 0 0">กราฟย้อนหลังจะแสดงเมื่อเก็บข้อมูลได้มากพอ</p>`;
-  const W = 300, H = 90, t0 = Date.now() - 72 * 3600e3, t1 = Date.now();
-  let lo = Math.min(...all.map(p => p[1])), hiV = Math.max(...all.map(p => p[1]));
-  if (hiV - lo < 50) { lo -= 25; hiV += 25; }
-  const x = t => 8 + (new Date(t).getTime() - t0) / (t1 - t0) * (W - 16), y = v => H - 16 - (v - lo) / (hiV - lo) * (H - 26);
-  const cols = { samlae: css("--l3"), siphon: css("--l2"), bangkhen_out: css("--accent") };
-  const lbl = { samlae: "สำแล", siphon: "ไซฟอนรังสิต", bangkhen_out: "ทางออกโรงผลิตบางเขน" };
-  const paths = Object.entries(series).filter(([, p]) => p.length > 1).map(([k, p]) => `<path d="${p.map((q, i) => (i ? "L" : "M") + x(q[0]).toFixed(1) + " " + y(q[1]).toFixed(1)).join(" ")}" fill="none" stroke="${cols[k]}" stroke-width="2"/>`).join("");
-  return `<p class="small" style="margin:12px 0 2px">ย้อนหลัง 72 ชม. (µS/cm) · ${Object.keys(series).filter(k => series[k].length > 1).map(k => `<span style="color:${cols[k]}">━ ${lbl[k]}</span>`).join(" · ")}</p>
-  <svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="กราฟ EC ย้อนหลัง">${paths}
-    <text x="8" y="${H - 3}" font-size="10" fill="${css("--muted")}">−72 ชม.</text><text x="${W - 8}" y="${H - 3}" font-size="10" text-anchor="end" fill="${css("--muted")}">ตอนนี้</text>
-    <text x="${W - 8}" y="10" font-size="10" text-anchor="end" fill="${css("--muted")}">${fmt(hiV)}</text><text x="${W - 8}" y="${H - 18}" font-size="10" text-anchor="end" fill="${css("--muted")}">${fmt(lo)}</text></svg>`;
-}
-
-function renderSrc() {
-  const r = D.raw || {}, rows = [];
-  const rawRow = (n, x) => { if (!x) return `<span>${n}</span><span class="small">ไม่มีข้อมูล</span><span></span>`;
-    const d = x.cond_24h_ago != null && x.cond != null ? x.cond - x.cond_24h_ago : null;
-    return `<span><span class="dot" style="background:${colorOf(lvlOf(x.cond))}"></span>${n}</span><span class="small">${d == null ? "" : (d >= 0 ? "+" : "") + fmt(d) + " / 24 ชม."}</span><span class="num">${fmt(x.cond)}</span>`; };
-  rows.push(rawRow("น้ำดิบ สำแล", r.samlae), rawRow("ไซฟอนรังสิต", r.siphon));
-  Object.entries(D.plants).forEach(([n, p]) => { const v = p.f[0]; rows.push(`<span><span class="dot" style="background:${colorOf(lvlOf(v))}"></span>โรงผลิต${n}</span><span class="small">${SRC[p.src]}</span><span class="num">${fmt(v)}</span>`); });
-  document.getElementById("srcBox").innerHTML = `<div class="src">${rows.join("")}</div>${spark(D.series || {})}`;
-}
-
-function renderOutlook() {
-  const o = D.outlook || {}, lv = o.level, names = ["ความเสี่ยงต่ำ", "เฝ้าระวัง", "ความเสี่ยงสูง"], cols = ["--l0", "--l2", "--l4"];
-  const c13 = D.flow?.["C.13"];
-  document.getElementById("outlook").innerHTML = `<h2>แนวโน้มน้ำเค็ม 2–3 วัน</h2>
-    <span class="pill" style="background:${lv == null ? css("--nodata") : css(cols[lv])}">${lv == null ? "ไม่มีข้อมูล" : names[lv]}</span>
-    <ul>${(o.why || []).map(w => `<li>${esc(w)}</li>`).join("") || "<li>ยังไม่มีข้อมูลน้ำจากเขื่อนและน้ำขึ้นน้ำลง</li>"}</ul>
-    <dl class="kv"><dt>น้ำจากเขื่อน C.13</dt><dd class="num">${c13 ? fmt(c13.q) + " ลบ.ม./วิ" + (c13.dq ? ` (${c13.dq > 0 ? "+" : ""}${fmt(c13.dq)} จากเมื่อวาน)` : "") : "–"}</dd>
-    <dt>น้ำขึ้นสูงสุดครั้งถัดไป</dt><dd>${o.next_high ? tTH(o.next_high.t) + " · " + o.next_high.m.toFixed(2) + " ม." + (o.spring_tide ? " · น้ำเกิด" : "") : "–"}</dd>
-    <dt>แนวน้ำเค็ม 0.25 g/L</dt><dd>${o.front ? `${esc(o.front.name)} กม. ${o.front.km} · ห่างสำแล ${o.front.dist_km} กม.` : (o.front_level === 0 ? "ยังไม่เข้าใกล้" : "–")}</dd></dl>
-    <p class="small" style="margin:8px 0 0">ประเมินจากน้ำจืดที่ปล่อยจากเขื่อนเจ้าพระยา ช่วงน้ำเกิด และแนวลิ่มน้ำเค็มในแม่น้ำ ใช้ดูความเสี่ยงที่ไกลกว่าเวลาเดินทางของน้ำ</p>`;
+  let lo = 0;
+  document.getElementById("legend").innerHTML = NAMES.map((n, i) => { const h = CUTS[i];
+    const s = `<div class="it">${pinSVG(css(LVC[i]), 13)}<span>${n}<small>${h == null ? "≥ " + lo.toLocaleString() : lo + "–" + h.toLocaleString()}</small></span></div>`; lo = h; return s; }).join("")
+    + `<div class="it"><span class="sw-unk"></span><span>${hi ? "ยังคาดการณ์ไม่ได้" : "ไม่มีข้อมูล"}<small>µS/cm</small></span></div>`;
 }
 
 function renderDetail() {
   const el = document.getElementById("detail");
   if (!selected) {
-    const vs = Object.values(D.stations).map(s => s.f[hi]).filter(v => v != null);
-    const mx = vs.length ? Math.max(...vs) : null, avg = vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null;
-    el.innerHTML = `<div class="eyebrow">ภาพรวม 3 จังหวัด · ${hi ? "คาดการณ์ " + hlabel(hi) : "ตอนนี้"}</div>
-      <div style="display:flex;gap:22px;flex-wrap:wrap;margin-top:6px">
-      <div><div class="big">${fmt(avg)}</div><div class="unit">เฉลี่ย µS/cm (${vs.length} สถานี)</div></div>
-      <div><div class="big" style="color:${colorOf(lvlOf(mx))}">${fmt(mx)}</div><div class="unit">สูงสุด µS/cm${mx != null ? ` (~${salt(mx)} g/L)` : ""}</div></div></div>
-      <p class="small" style="margin:10px 0 0">แตะเขตบนแผนที่ หรือเลือกจากช่องค้นหา เพื่อดูว่ารับน้ำจากที่ไหนและค่าที่คาดการณ์</p>`;
+    el.innerHTML = `<p class="small" style="margin:0">แตะเขตหรือหมุดบนแผนที่ หรือเลือกจากช่องค้นหา เพื่อดูว่าพื้นที่นั้นรับน้ำจากที่ไหน และค่าที่คาดการณ์ 48 ชั่วโมง · หมุด = สถานีตรวจวัด สีพื้นเขต = ค่าสูงสุดของพื้นที่จ่ายน้ำที่ครอบคลุมเขตนั้น</p>`;
     return;
   }
   const p = DIST.features.find(f => f.properties.code === selected).properties, d = D.districts[selected], v = d.f[hi], li = lvlOf(v);
-  const fc = D.horizons.map((h, i) => `<span style="display:inline-block;margin:2px 6px 2px 0" title="${hlabel(i)}"><span class="small">${h ? "+" + h : "ตอนนี้"}</span> <span class="pill num" style="background:${colorOf(lvlOf(d.f[i]))}">${fmt(d.f[i])}</span></span>`).join("");
-  const parts = d.parts.map(x => { const z = D.zones[x[0]]; return `${Math.round(x[1] * 100)}% สถานีสูบจ่าย${x[0]} <span class="small">(โรงผลิต${z.plant} · ${SRC[z.src]})</span> <span class="num">${fmt(z.f[hi])}</span>`; }).join("<br>");
-  el.innerHTML = `<div class="eyebrow">${p.pro}</div><h2 style="font-size:20px;margin:2px 0 8px">${p.pro === "กรุงเทพมหานคร" ? "เขต" : "อำเภอ"}${p.th}</h2>
-    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span class="big">${fmt(v)}</span><span class="unit">µS/cm</span>
-    <span class="pill" style="background:${colorOf(li)}">${v == null ? (hi ? "ยังคาดการณ์ไม่ได้" : "ไม่มีข้อมูล") : NAMES[li]}</span></div>
-    <dl class="kv"><dt>ความเค็มโดยประมาณ</dt><dd class="num">${v == null ? "–" : "~" + salt(v) + " g/L"}</dd><dt>รับน้ำจาก</dt><dd>${parts}</dd></dl>
-    <p class="small" style="margin:10px 0 4px">คาดการณ์ 48 ชม. (µS/cm)</p><div>${fc}</div>
-    <p class="small" style="margin:10px 0 0"><a href="#" id="clr" style="color:var(--accent)">กลับไปภาพรวม</a></p>`;
-  document.getElementById("clr").onclick = e => { e.preventDefault(); select(null); };
+  const parts = d.parts.map(x => { const z = D.zones[x[0]]; return `${Math.round(x[1] * 100)}% สถานีสูบจ่าย${x[0]} <span class="small">(โรงผลิต${z.plant} · น้ำดิบ${SRC[z.src]})</span>`; }).join("<br>");
+  el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px 18px;align-items:baseline;justify-content:space-between">
+      <div><div class="small">${p.pro}</div><h2 style="font-family:var(--f-display);font-size:20px;margin:0">${p.pro === "กรุงเทพมหานคร" ? "เขต" : "อำเภอ"}${p.th}</h2></div>
+      <div style="display:flex;gap:10px;align-items:baseline"><span class="big" style="color:${colorOf(li)}">${fmt(v)}</span><span class="small">µS/cm</span>${statusPill(li)}</div></div>
+    <dl class="kv"><dt>ความเค็มโดยประมาณ</dt><dd>${v == null ? "–" : "~" + salt(v) + " g/L"}</dd><dt>รับน้ำจาก</dt><dd>${parts}</dd></dl>
+    <div class="small" style="margin-top:10px">คาดการณ์ (µS/cm)</div>
+    <div class="fcrow">${D.horizons.map((h, i) => `<span>${h ? "+" + h : "ตอนนี้"} ${statusLike(d.f[i])}</span>`).join("")}</div>
+    <p style="margin:10px 0 0"><button class="link" id="clr">กลับไปภาพรวม</button></p>`;
+  document.getElementById("clr").onclick = () => select(null);
+}
+const statusLike = v => { const li = lvlOf(v); return `<span class="status" style="background:${li < 0 ? "var(--soft)" : `color-mix(in srgb,${css(LVC[li])} 22%,var(--surface))`};color:var(--ink)">${fmt(v)}</span>`; };
+
+function renderProv() {
+  const by = {};
+  stVals().forEach(x => { const p = PROV[x.s.district.slice(0, 2)]; (by[p] ??= []).push(x.v); });
+  document.getElementById("prov").innerHTML = ["กรุงเทพมหานคร", "นนทบุรี", "สมุทรปราการ"].map(p => {
+    const v = by[p] || [], avg = v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+    const w = avg == null ? 0 : Math.min(100, avg / (CUTS[1] || 600) * 100);
+    return `<div class="prov"><span class="pn">${p}</span><div><div class="meta"><span>ค่าเฉลี่ย<b style="color:${colorOf(lvlOf(avg))}">${fmt(avg)}</b>µS/cm</span><span>ช่วง ${v.length ? fmt(Math.min(...v)) + " – " + fmt(Math.max(...v)) : "–"} · ${v.length} จุด</span></div>
+      <div class="track"><span style="width:${w}%;${avg != null && lvlOf(avg) >= 2 ? `background:${colorOf(lvlOf(avg))}` : ""}"></span></div></div></div>`;
+  }).join("") + `<p class="small" style="margin:8px 0 0">แถบเต็ม = ${CUTS[1]} µS/cm (ระดับเฝ้าระวัง)</p>`;
+}
+
+const ICON_RAW = `<svg class="ic" viewBox="0 0 24 32"><path d="M12 1C9 7 3 13.5 3 20a9 9 0 0 0 18 0C21 13.5 15 7 12 1Z"/></svg>`;
+const ICON_PLANT = `<svg class="ic" viewBox="0 0 24 24"><path d="M3 21V9l5 3V9l5 3V5h4l1 16H3Z"/></svg>`;
+function renderSrc() {
+  const r = D.raw || {}, last = D.horizons.length - 1, rows = [];
+  const raw = (n, sub, x) => {
+    const li = lvlOf(x?.cond), d = x && x.cond_24h_ago != null && x.cond != null ? x.cond - x.cond_24h_ago : null;
+    return `<div class="srcrow">${ICON_RAW}<div class="nm">${n}<small>${sub}</small></div>${statusPill(li)}
+      <div class="val">ค่า EC ปัจจุบัน<b>${fmt(x?.cond)} µS/cm</b></div><div class="val">เทียบ 24 ชม. ก่อน<b>${d == null ? "–" : (d >= 0 ? "+" : "") + fmt(d)}</b></div></div>`; };
+  rows.push(raw("น้ำดิบ จุดสูบสำแล", "แม่น้ำเจ้าพระยา จ.ปทุมธานี", r.samlae), raw("ไซฟอนรังสิต", "คลองประปา ~7 ชม. หลังสำแล", r.siphon));
+  Object.entries(D.plants).forEach(([n, p]) => {
+    rows.push(`<div class="srcrow">${ICON_PLANT}<div class="nm">โรงผลิตน้ำ${n}<small>น้ำดิบ${SRC[p.src]}</small></div>${statusPill(lvlOf(p.f[0]))}
+      <div class="val">ค่า EC ปัจจุบัน<b>${fmt(p.f[0])} µS/cm</b></div><div class="val">คาดการณ์ (${D.horizons[last]} ชม.)<b>${p.f[last] == null ? "ยังไม่ทราบ" : fmt(p.f[last]) + " µS/cm"}</b></div></div>`);
+  });
+  document.getElementById("srcBox").innerHTML = rows.join("");
+}
+
+function renderTrend() {
+  const W = 560, H = 210, L0 = 44, R0 = 26, T0 = 12, B0 = 34;
+  const now = new Date(D.generated).getTime(), t0 = now - 48 * 3600e3, t1 = now + 48 * 3600e3;
+  const S = D.series || {};
+  const hist = { samlae: S.samlae || [], bangkhen_out: S.bangkhen_out || [] };
+  // เส้นคาดการณ์ = ทางออกโรงผลิตบางเขน (ต่อจากเส้นย้อนหลัง) — ไม่ใช้ค่าเฉลี่ยทุกสถานี เพราะจำนวนสถานีที่คาดได้ลดลงตามเวลา
+  const avgF = D.horizons.map((h, i) => { const v = D.plants["บางเขน"]?.f[i]; return v == null ? null : [now + h * 3600e3, v]; }).filter(Boolean);
+  const selF = selected ? D.horizons.map((h, i) => D.districts[selected].f[i] == null ? null : [now + h * 3600e3, D.districts[selected].f[i]]).filter(Boolean) : [];
+  const pts = [...Object.values(hist).flat().map(p => [new Date(p[0]).getTime(), p[1]]), ...avgF, ...selF];
+  let lo = 0, hiV = Math.max(300, ...pts.map(p => p[1]));
+  hiV = Math.ceil(hiV / 100) * 100;
+  const x = t => L0 + (t - t0) / (t1 - t0) * (W - L0 - R0), y = v => T0 + (1 - (v - lo) / (hiV - lo)) * (H - T0 - B0);
+  const line = (p, col, dash, wd = 2) => p.length > 1 ? `<path d="${p.map((q, i) => (i ? "L" : "M") + x(q[0]).toFixed(1) + " " + y(q[1]).toFixed(1)).join(" ")}" fill="none" stroke="${col}" stroke-width="${wd}" ${dash ? 'stroke-dasharray="5 4"' : ""} stroke-linejoin="round"/>` : "";
+  const dots = (p, col) => p.map(q => `<circle cx="${x(q[0]).toFixed(1)}" cy="${y(q[1]).toFixed(1)}" r="3" fill="${css("--surface")}" stroke="${col}" stroke-width="2"/>`).join("");
+  const mut = css("--muted"), grid = css("--line"), acc = css("--accent"), acc2 = css("--accent-2"), warn = css("--l2");
+  let g = "";
+  for (let k = 0; k <= 4; k++) { const v = lo + (hiV - lo) * k / 4, yy = y(v); g += `<line x1="${L0}" x2="${W - R0}" y1="${yy}" y2="${yy}" stroke="${grid}"/><text x="${L0 - 6}" y="${yy + 4}" font-size="11" text-anchor="end" fill="${mut}">${fmt(v)}</text>`; }
+  for (let h = -48; h <= 48; h += 12) { const t = now + h * 3600e3, xx = x(t); g += `<text x="${xx}" y="${H - 18}" font-size="11" text-anchor="middle" fill="${mut}">${h ? tShort(t) : "ตอนนี้"}</text><text x="${xx}" y="${H - 5}" font-size="10" text-anchor="middle" fill="${mut}">${h ? (h > 0 ? "+" : "") + h + " ชม." : ""}</text>`; }
+  const wy = CUTS[2] != null && CUTS[2] < hiV ? `<line x1="${L0}" x2="${W - R0}" y1="${y(CUTS[2])}" y2="${y(CUTS[2])}" stroke="${warn}" stroke-dasharray="3 3"/>` : "";
+  const nowX = x(now), hx = x(hTime(hi).getTime());
+  const svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="กราฟ EC ย้อนหลังและคาดการณ์">
+    <rect x="${nowX}" y="${T0}" width="${W - R0 - nowX}" height="${H - T0 - B0}" fill="${css("--soft")}"/>${g}${wy}
+    <line x1="${nowX}" x2="${nowX}" y1="${T0}" y2="${H - B0}" stroke="${mut}" stroke-width="1"/>
+    ${line(hist.samlae.map(p => [new Date(p[0]).getTime(), p[1]]), acc2, false)}
+    ${line(hist.bangkhen_out.map(p => [new Date(p[0]).getTime(), p[1]]), acc, false)}
+    ${line(avgF, acc, true)}${dots(avgF, acc)}
+    ${selF.length ? line(selF, css("--l3"), false, 2.5) + dots(selF, css("--l3")) : ""}
+    <line x1="${hx}" x2="${hx}" y1="${T0}" y2="${H - B0}" stroke="${css("--ink")}" stroke-width="1.5" opacity=".6"/>
+  </svg>`;
+  const enough = (hist.samlae.length + hist.bangkhen_out.length) > 4;
+  document.getElementById("trend").innerHTML = svg + `<div class="chart-legend">
+    <span><i style="background:${acc2}"></i>น้ำดิบสำแล</span><span><i style="background:${acc}"></i>ทางออกโรงผลิตบางเขน</span>
+    <span><i style="background:repeating-linear-gradient(90deg,${acc} 0 5px,transparent 5px 8px)"></i>โรงผลิตบางเขน (คาดการณ์)</span>
+    ${selected ? `<span><i style="background:${css("--l3")}"></i>${dName(DIST.features.find(f => f.properties.code === selected).properties)}</span>` : ""}
+    <span><i style="background:${warn}"></i>ระดับเฝ้าระวัง</span></div>
+    ${enough ? "" : `<p class="small" style="margin:6px 0 0">ระบบเริ่มเก็บข้อมูลเมื่อ 17 ต.ค. 2569 เส้นย้อนหลังและค่าคาดการณ์จะครบเมื่อสะสมข้อมูลได้ 2–3 วัน</p>`}`;
+}
+
+function renderOutlook() {
+  const o = D.outlook || {}, lv = o.level, names = ["ความเสี่ยงต่ำ", "เฝ้าระวัง", "ความเสี่ยงสูง"], li = lv == null ? -1 : [0, 2, 4][lv];
+  const c13 = D.flow?.["C.13"];
+  document.getElementById("outlook").innerHTML = `<div class="card-h"><h2><svg class="h-ic" viewBox="0 0 24 24"><path d="M2 15c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2M2 20c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M12 3v6M9 6l3 3 3-3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>แนวโน้มน้ำเค็ม 2–3 วัน</h2>
+    ${li < 0 ? statusPill(-1) : `<span class="status" style="background:color-mix(in srgb,${css(LVC[li])} 20%,var(--surface));color:color-mix(in srgb,${css(LVC[li])} 70%,var(--ink))">${names[lv]}</span>`}</div>
+    <dl class="kv"><dt>น้ำจากเขื่อนเจ้าพระยา (C.13)</dt><dd>${c13 ? fmt(c13.q) + " ลบ.ม./วินาที" + (c13.dq ? ` (${c13.dq > 0 ? "+" : ""}${fmt(c13.dq)} จากเมื่อวาน)` : "") : "–"}</dd>
+    <dt>น้ำขึ้นสูงสุดครั้งถัดไป</dt><dd>${o.next_high ? tTH(o.next_high.t, { year: undefined }) + " · " + o.next_high.m.toFixed(2) + " ม." + (o.spring_tide ? " · ช่วงน้ำเกิด" : "") : "–"}</dd>
+    <dt>แนวน้ำเค็ม 0.25 g/L</dt><dd>${o.front ? `${esc(o.front.name)} กม. ${o.front.km} · ห่างสำแล ${o.front.dist_km} กม.` : (o.front_level === 0 ? "ยังไม่เข้าใกล้จุดสูบ" : "–")}</dd></dl>
+    <p class="small" style="margin:10px 0 0">ใช้ดูความเสี่ยงที่ไกลกว่าเวลาเดินทางของน้ำ ประเมินจากน้ำจืดที่ปล่อยจากเขื่อน ช่วงน้ำเกิด และแนวลิ่มน้ำเค็มในแม่น้ำ</p>`;
 }
 
 function select(code, zoom) {
   selected = code; document.getElementById("pick").value = code || "";
-  if (code && zoom) distLayer.eachLayer(l => { if (l.feature.properties.code === code) map.fitBounds(l.getBounds(), { maxZoom: 12, padding: [40, 40] }); });
+  if (code && zoom) distLayer.eachLayer(l => { if (l.feature.properties.code === code) map.fitBounds(l.getBounds(), { maxZoom: 13, padding: [40, 40] }); });
   render();
 }
 
-load().catch(e => { document.getElementById("status").textContent = "โหลดข้อมูลไม่สำเร็จ: " + e.message; console.error(e); });
-setInterval(() => fetch("data/latest.json", { cache: "no-store" }).then(x => x.json()).then(d => { if (d.generated !== D.generated) { D = d; renderStatus(); render(); } }).catch(() => {}), 5 * 60e3);
+load().catch(e => { document.querySelector("#updated span").textContent = "โหลดข้อมูลไม่สำเร็จ"; console.error(e); });
+setInterval(() => fetch("data/latest.json", { cache: "no-store" }).then(x => x.json()).then(d => { if (d.generated !== D.generated) { D = d; render(); } }).catch(() => {}), 5 * 60e3);

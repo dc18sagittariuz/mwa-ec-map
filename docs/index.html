@@ -3,61 +3,126 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>แผนที่ความนำไฟฟ้าน้ำประปา</title>
-<meta name="description" content="ติดตามและคาดการณ์ค่าความนำไฟฟ้า (EC) ของน้ำประปา กรุงเทพฯ นนทบุรี สมุทรปราการ ช่วงน้ำเค็มรุก">
+<title>EC Watch แผนที่ความนำไฟฟ้าน้ำประปา</title>
+<meta name="description" content="ติดตามและคาดการณ์ค่าความนำไฟฟ้า (EC) ของน้ำประปา กรุงเทพฯ นนทบุรี สมุทรปราการ ช่วงน้ำเค็มรุก (โครงการส่วนตัว)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div>
-      <h1>ความนำไฟฟ้า (EC) ของน้ำประปา กรุงเทพฯ · นนทบุรี · สมุทรปราการ</h1>
-      <p class="sub">ค่าวัดจริงและคาดการณ์ล่วงหน้า 48 ชั่วโมง ตามเวลาที่น้ำเดินทางจากจุดสูบน้ำดิบสำแลถึงแต่ละพื้นที่</p>
+<nav class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="#" aria-label="EC Watch หน้าแรก">
+      <svg class="drop" viewBox="0 0 24 32" aria-hidden="true"><path d="M12 1C9 7 3 13.5 3 20a9 9 0 0 0 18 0C21 13.5 15 7 12 1Z"/><path class="shine" d="M8 21a4 4 0 0 0 4 4" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
+      <span class="brand-name">EC Watch</span><span class="brand-sep"></span><span class="brand-sub">Tap Water Salinity</span>
+    </a>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tabOverview" aria-selected="true">ภาพรวม</button>
+      <button role="tab" id="tabMap" aria-selected="false">แผนที่ EC</button>
+      <button role="tab" id="tabMethod" aria-selected="false">ข้อมูลและวิธีคำนวณ</button>
     </div>
-    <div class="controls">
-      <select id="pick" aria-label="ค้นหาเขต/อำเภอ"><option value="">ค้นหาเขต/อำเภอ…</option></select>
-    </div>
-  </header>
-
-  <div class="status" id="status">กำลังโหลดข้อมูล…</div>
-
-  <div class="timebar" id="timebar">
-    <span class="lbl">ช่วงเวลา</span>
-    <input type="range" id="hr" min="0" max="8" step="1" value="0" aria-label="ชั่วโมงข้างหน้า">
-    <span class="t" id="tlabel">ตอนนี้</span>
+    <div class="updated" id="updated"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v4h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>กำลังโหลด…</span></div>
   </div>
+</nav>
 
-  <div class="main">
-    <div class="mapbox">
-      <div id="map" role="img" aria-label="แผนที่เขต/อำเภอ ระบายสีตามค่า EC"></div>
-      <div class="legend" id="legend"></div>
+<header class="hero">
+  <div class="hero-in">
+    <div class="hero-title">
+      <svg class="drop big" viewBox="0 0 24 32" aria-hidden="true"><path d="M12 1C9 7 3 13.5 3 20a9 9 0 0 0 18 0C21 13.5 15 7 12 1Z"/><path class="shine" d="M8 21a4 4 0 0 0 4 4" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
+      <div>
+        <h1>แผนที่ความนำไฟฟ้าน้ำประปา</h1>
+        <p class="h1sub">กรุงเทพฯ · นนทบุรี · สมุทรปราการ</p>
+        <p class="lede">ค่าตรวจวัดจริงและคาดการณ์ล่วงหน้า 48 ชั่วโมง</p>
+      </div>
     </div>
-    <aside>
-      <section class="panel detail" id="detail"></section>
-      <section class="panel outlook" id="outlook"></section>
-      <section class="panel">
-        <h2>น้ำดิบและโรงผลิต</h2>
-        <div id="srcBox"></div>
-      </section>
-      <section class="panel">
-        <h2>สรุปรายจังหวัด</h2>
+    <div class="kpis">
+      <div class="kpi"><span class="kpi-ic blue"><svg viewBox="0 0 24 24"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12Z"/><circle cx="12" cy="10" r="2.6" class="hole"/></svg></span>
+        <div><div class="kpi-l">จุดตรวจวัดที่มีข้อมูล</div><div class="kpi-v"><b id="kN">–</b><span>จุด</span></div></div></div>
+      <div class="kpi"><span class="kpi-ic sky"><svg viewBox="0 0 24 24"><path d="M2 12h4l3-7 4 14 3-7h6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <div><div class="kpi-l">ค่า EC เฉลี่ย</div><div class="kpi-v"><b id="kAvg">–</b><span>µS/cm</span></div></div></div>
+      <div class="kpi"><span class="kpi-ic amber"><svg viewBox="0 0 24 24"><path d="M12 3 2 21h20L12 3Z"/><path d="M12 10v5M12 18h.01" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg></span>
+        <div><div class="kpi-l">ค่าสูงสุด</div><div class="kpi-v"><b id="kMax">–</b><span>µS/cm</span></div><div class="kpi-s" id="kMaxAt"></div></div></div>
+    </div>
+  </div>
+  <svg class="waves" viewBox="0 0 1440 60" preserveAspectRatio="none" aria-hidden="true"><path d="M0 30 C 240 0 480 60 720 30 S 1200 0 1440 30 V60 H0Z"/><path class="w2" d="M0 40 C 260 20 520 60 760 40 S 1220 20 1440 42 V60 H0Z"/></svg>
+</header>
+
+<main class="wrap" id="viewOverview">
+  <div class="grid">
+    <section class="card mapcard">
+      <div class="card-h">
+        <h2><svg class="h-ic" viewBox="0 0 24 24"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12Z"/><circle cx="12" cy="10" r="2.6" class="hole"/></svg>แผนที่แสดงค่าความนำไฟฟ้า (EC)</h2>
+        <div class="card-tools">
+          <span class="pill-out" id="whenPill"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>–</span></span>
+          <select id="hsel" aria-label="ช่วงเวลา"></select>
+          <select id="pick" aria-label="ค้นหาเขต/อำเภอ"><option value="">ค้นหาเขต/อำเภอ…</option></select>
+        </div>
+      </div>
+      <div class="mapwrap">
+        <div id="map" role="img" aria-label="แผนที่เขต/อำเภอ ระบายสีตามค่า EC"></div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="detail" id="detail"></div>
+    </section>
+
+    <aside class="side">
+      <section class="card">
+        <div class="card-h"><h2><svg class="h-ic" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>สรุปรายจังหวัด</h2></div>
         <div id="prov"></div>
       </section>
-      <section class="panel">
-        <h2 id="rankTitle">ค่าสูงสุด 6 อันดับ</h2>
-        <ol class="rank" id="rank"></ol>
+
+      <section class="card">
+        <div class="card-h"><h2><svg class="h-ic" viewBox="0 0 24 24"><path d="M3 21V9l5 3V9l5 3V5h4l1 16H3Z"/></svg>น้ำดิบและโรงผลิต</h2></div>
+        <div class="srcrows" id="srcBox"></div>
       </section>
+
+      <section class="card">
+        <div class="card-h"><h2><svg class="h-ic" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>แนวโน้มค่า EC</h2>
+          <div class="seg" id="hseg" role="group" aria-label="ช่วงเวลาคาดการณ์"></div></div>
+        <div id="trend"></div>
+      </section>
+
+      <section class="card outlook" id="outlook"></section>
     </aside>
   </div>
+</main>
 
-  <footer>
-    <div>โครงการส่วนตัว ไม่ใช่ระบบทางการของการประปานครหลวง · ค่าคาดการณ์ใช้เวลาเดินทางของน้ำจากข้อมูลปี 2564 และยังไม่ได้รับการตรวจสอบ</div>
-    <div>ข้อมูล: twqonline.mwa.co.th (น้ำประปา), rwc.mwa.co.th (น้ำดิบ), กรมชลประทาน SWOC (น้ำจากเขื่อน), Open-Meteo (น้ำขึ้นน้ำลง) · ขอบเขตเขต/อำเภอ: OpenGISData-Thailand · แผนที่พื้นหลัง © ผู้ร่วมพัฒนา OpenStreetMap</div>
-  </footer>
-</div>
+<main class="wrap" id="viewMethod" hidden>
+  <section class="card method">
+    <h2>ข้อมูลและวิธีคำนวณ</h2>
+    <h3>แหล่งข้อมูล (ดึงทุก 30 นาที)</h3>
+    <ul>
+      <li><b>น้ำประปา</b> สถานีตรวจวัดคุณภาพน้ำประปาออนไลน์ twqonline.mwa.co.th ค่า EC (µS/cm) และความเค็ม</li>
+      <li><b>น้ำดิบ</b> rwc.mwa.co.th จุดสูบน้ำดิบสำแล ไซฟอนรังสิต และสถานีตามแม่น้ำเจ้าพระยา</li>
+      <li><b>น้ำจากเขื่อน</b> กรมชลประทาน (SWOC) สถานี C.13 ท้ายเขื่อนเจ้าพระยา และ C.35 บ้านป้อม</li>
+      <li><b>น้ำขึ้นน้ำลง</b> แบบจำลอง Open-Meteo Marine หน้าปากแม่น้ำเจ้าพระยา</li>
+    </ul>
+    <h3>การคาดการณ์ 0–48 ชั่วโมง</h3>
+    <p>น้ำที่จะออกจากก๊อกในอีกไม่กี่ชั่วโมง ส่วนใหญ่ผ่านจุดวัดต้นทางไปแล้ว ค่าคาดการณ์จึงได้จากการส่งต่อค่าที่วัดได้ตามเวลาเดินทางของน้ำ</p>
+    <p class="formula">EC ที่ก๊อก (ตอนนี้ + h) ≈ EC ที่ต้นทาง (ตอนนี้ + h − เวลาเดินทาง) + ค่าชดเชยของสถานี</p>
+    <p>ระบบเลือกต้นทางที่ใกล้สถานีที่สุดที่ข้อมูลยังครอบคลุม คือทางออกโรงผลิต → ไซฟอนรังสิต → จุดสูบสำแล เวลาเดินทางใช้ตารางเทียบพีคค่าความนำไฟฟ้าปี 2564 เช่น สำแล → โรงผลิตบางเขน ราว 14 ชม. และ → โรงผลิตสามเสน ราว 49 ชม. ถ้าน้ำที่จะถึงยังไม่ผ่านจุดวัดใด พื้นที่นั้นจะแสดงว่า "ยังคาดการณ์ไม่ได้"</p>
+    <h3>ค่าของเขต/อำเภอ</h3>
+    <p>แต่ละเขตใช้ค่าสูงสุดของพื้นที่จ่ายน้ำของสถานีสูบจ่ายที่ครอบคลุมเขตนั้นตั้งแต่ 10% ขึ้นไป ค่าของพื้นที่จ่ายน้ำคือค่าสูงสุดของสถานีสูบจ่ายและสถานีปลายสายในพื้นที่</p>
+    <h3>แนวโน้มน้ำเค็ม 2–3 วัน</h3>
+    <p>ประเมินความเสี่ยงจากน้ำจืดที่ปล่อยจากเขื่อนเจ้าพระยา (เฝ้าระวังเมื่อต่ำกว่า 150 ลบ.ม./วินาที เสี่ยงสูงเมื่อต่ำกว่า 80) ช่วงน้ำเกิด และระยะของแนวน้ำเค็ม 0.25 g/L จากจุดสูบสำแล</p>
+    <h3>เกณฑ์สี (ชั่วคราว)</h3>
+    <div id="mLevels"></div>
+    <h3>ข้อจำกัด</h3>
+    <ul>
+      <li>เวลาเดินทางของน้ำมาจากข้อมูลปี 2564 และอาจเปลี่ยนตามอัตราการจ่ายน้ำ แรงดัน และการสลับแหล่งจ่าย</li>
+      <li>ยังไม่ได้คิดการเจือจางในถังพักน้ำ ค่าพีคจริงอาจต่ำกว่าที่คาด</li>
+      <li>ความเค็มเป็นค่าประมาณจากอัตราส่วนกับ EC ของข้อมูลจริง</li>
+    </ul>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="foot-in">
+    <span><b>หมายเหตุ:</b> เป็นโครงการส่วนบุคคล ไม่ใช่ระบบทางการของการประปานครหลวง ข้อมูลคาดการณ์ยังไม่ได้รับการยืนยันจากหน่วยงานที่เกี่ยวข้อง ควรใช้เพื่อการศึกษาเท่านั้น</span>
+    <span><b>แหล่งข้อมูล:</b> twqonline.mwa.co.th · rwc.mwa.co.th · กรมชลประทาน · Open-Meteo · OpenGISData-Thailand · แผนที่ © ผู้ร่วมพัฒนา OpenStreetMap</span>
+  </div>
+</footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="app.js"></script>
 </body>
