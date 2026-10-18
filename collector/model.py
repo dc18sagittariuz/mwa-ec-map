@@ -24,10 +24,10 @@ class Series:
     def last_t(self):
         return self.p[-1][0] if self.p else None
 
-    def at(self, t, max_gap_h=1.5):
+    def at(self, t, max_gap_h=4.0, edge_s=2700):
         """ค่าที่เวลา t (ประมาณเชิงเส้นระหว่างจุดที่ห่างกันไม่เกิน max_gap_h)"""
         p = self.p
-        if not p or t < p[0][0] - timedelta(minutes=45) or t > p[-1][0] + timedelta(minutes=45):
+        if not p or t < p[0][0] - timedelta(seconds=edge_s) or t > p[-1][0] + timedelta(seconds=edge_s):
             return None
         lo, hi = 0, len(p) - 1
         while lo < hi:
@@ -41,12 +41,12 @@ class Series:
             return p[j][1]
         if j == 0 or p[j][0] < t:
             near = p[j]
-            return near[1] if abs((near[0] - t).total_seconds()) <= 2700 else None
+            return near[1] if abs((near[0] - t).total_seconds()) <= edge_s else None
         a, b = p[j - 1], p[j]
         gap = (b[0] - a[0]).total_seconds()
         if gap > max_gap_h * 3600:
             near = a if (t - a[0]) < (b[0] - t) else b
-            return near[1] if abs((near[0] - t).total_seconds()) <= 2700 else None
+            return near[1] if abs((near[0] - t).total_seconds()) <= edge_s else None
         w = (t - a[0]).total_seconds() / gap
         return a[1] + (b[1] - a[1]) * w
 
