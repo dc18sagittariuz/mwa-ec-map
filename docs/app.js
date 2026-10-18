@@ -104,11 +104,19 @@ function init() {
 
 function fillPick() {
   const pick = document.getElementById("pick");
-  const opts = mode === "dist"
-    ? DIST.features.map(f => f.properties).sort((a, b) => a.pro.localeCompare(b.pro, "th") || a.th.localeCompare(b.th, "th"))
-        .map(p => [p.code, `${p.th} (${p.pro === "กรุงเทพมหานคร" ? "กทม." : p.pro})`])
-    : BR.features.map(f => f.properties).sort((a, b) => a.name.localeCompare(b.name, "th")).map(p => [p.code, "สาขา" + p.name]);
-  pick.innerHTML = `<option value="">${mode === "dist" ? "ค้นหาเขต/อำเภอ…" : "ค้นหาสาขา…"}</option>` + opts.map(([c, t]) => `<option value="${c}">${esc(t)}</option>`).join("");
+  let html = `<option value="">${mode === "dist" ? "ค้นหาเขต/อำเภอ…" : "ค้นหาสาขา…"}</option>`;
+  if (mode === "dist") {
+    // จัดกลุ่มตามจังหวัด: หัวข้อจังหวัด แล้วตามด้วยรายชื่อเขต/อำเภอ
+    ["กรุงเทพมหานคร", "นนทบุรี", "สมุทรปราการ"].forEach(pro => {
+      const items = DIST.features.map(f => f.properties).filter(p => p.pro === pro).sort((a, b) => a.th.localeCompare(b.th, "th"));
+      html += `<optgroup label="${pro}">` + items.map(p => `<option value="${p.code}">${esc(p.th)}</option>`).join("") + `</optgroup>`;
+    });
+  } else {
+    html += `<optgroup label="สาขาการประปา">` + BR.features.map(f => f.properties).sort((a, b) => a.name.localeCompare(b.name, "th"))
+      .map(p => `<option value="${p.code}">${esc(p.name)}</option>`).join("") + `</optgroup>`;
+  }
+  pick.innerHTML = html;
+  pick.value = selected || "";
   pick.setAttribute("aria-label", mode === "dist" ? "ค้นหาเขต/อำเภอ" : "ค้นหาสาขา");
 }
 function setModeButtons() { document.querySelectorAll("#layerSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.m === mode)); }
