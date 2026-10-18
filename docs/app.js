@@ -2,7 +2,7 @@
 // ---------- ตัวช่วย ----------
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const LVC = ["--l0", "--l1", "--l2", "--l3", "--l4"];
-let D, CUTS, NAMES, RATIO, DIST;
+let D, CUTS, NAMES, RATIO, DIST, BR;
 const lvlOf = ec => { if (ec == null) return -1; let i = 0; while (i < CUTS.length && ec >= CUTS[i]) i++; return i; };
 const colorOf = i => i < 0 ? css("--nodata") : css(LVC[i]);
 const fmt = v => v == null ? "–" : Math.round(v).toLocaleString("th-TH");
@@ -19,15 +19,23 @@ const pinSVG = (c, w = 18) => `<svg class="pin" width="${w}" height="${w * 1.36}
 const statusPill = li => li < 0 ? `<span class="status" style="background:var(--soft);color:var(--muted)">ไม่มีข้อมูล</span>`
   : `<span class="status" style="background:color-mix(in srgb,${css(LVC[li])} 18%,var(--surface));color:color-mix(in srgb,${css(LVC[li])} 70%,var(--ink))">${NAMES[li]}</span>`;
 
-let hi = 0, selected = null, map, distLayer, markers = {}, tiles;
+let hi = 0, selected = null, map, distLayer, brLayer, markers = {}, tiles, mode = "dist";
+try { if (localStorage.getItem("ecw-mode") === "branch") mode = "branch"; } catch (e) {}
+// พื้นที่ที่กำลังแสดง: เขต/อำเภอ หรือ สาขา กปน.
+const AREA = () => mode === "dist" ? D.districts : (D.branches || {});
+const curLayer = () => mode === "dist" ? distLayer : brLayer;
+const curGeo = () => mode === "dist" ? DIST : BR;
+const areaName = p => mode === "dist" ? dName(p) : "สาขา" + p.name;
+const areaProps = code => curGeo().features.find(f => f.properties.code === code).properties;
 
 // ---------- โหลด ----------
 async function load() {
-  const [d, g] = await Promise.all([
+  const [d, g, b] = await Promise.all([
     fetch("data/latest.json", { cache: "no-store" }).then(x => x.json()),
     fetch("data/districts.json").then(x => x.json()),
+    fetch("data/branches.json").then(x => x.json()),
   ]);
-  D = d; DIST = g; CUTS = d.levels; NAMES = d.level_names; RATIO = d.salt_per_ec;
+  D = d; DIST = g; BR = b; CUTS = d.levels; NAMES = d.level_names; RATIO = d.salt_per_ec;
   init();
 }
 
@@ -61,20 +69,23 @@ function init() {
     tiles.bringToBack();
   };
   setTiles();
-  distLayer = L.geoJSON(DIST, { style: () => ({ weight: 1, fillOpacity: .3 }) }).addTo(map);
+  distLayer = L.geoJSON(DIST, { style: () => ({ weight: 1, fillOpacity: .3 }) });
+  brLayer = L.geoJSON(BR, { style: () => ({ weight: 1.5, fillOpacity: .3 }) });
+  curLayer().addTo(map);
   map.fitBounds(distLayer.getBounds(), { padding: [10, 10] });
-  distLayer.eachLayer(l => l.on("click", () => select(l.feature.properties.code)));
+  [distLayer, brLayer].forEach(g => g.eachLayer(l => l.on("click", () => select(l.feature.properties.code))));
   [["นนทบุรี", 13.885, 100.43], ["กรุงเทพมหานคร", 13.76, 100.57], ["สมุทรปราการ", 13.585, 100.69]].forEach(([n, la, lo]) =>
     L.tooltip({ permanent: true, direction: "center", className: "plabel", interactive: false }).setLatLng([la, lo]).setContent(n).addTo(map));
   Object.entries(D.stations).forEach(([c, s]) => {
     markers[c] = L.marker([s.lat, s.lon], { icon: L.divIcon({ className: "mk", html: "", iconSize: [18, 24], iconAnchor: [9, 24], popupAnchor: [0, -22] }) }).addTo(map);
   });
 
-  // ค้นหาเขต
+  // ค้นหาพื้นที่ + สลับชั้นเขต/สาขา
   const pick = document.getElementById("pick");
-  DIST.features.map(f => f.properties).sort((a, b) => a.pro.localeCompare(b.pro, "th") || a.th.localeCompare(b.th, "th"))
-    .forEach(p => { const o = document.createElement("option"); o.value = p.code; o.textContent = `${p.th} (${p.pro === "กรุงเทพมหานคร" ? "กทม." : p.pro})`; pick.appendChild(o); });
   pick.onchange = () => select(pick.value || null, true);
+  fillPick();
+  document.querySelectorAll("#layerSeg button").forEach(b => b.onclick = () => setMode(b.dataset.m));
+  setModeButtons();
 
   // แท็บ
   const tabs = { tabOverview: "o", tabMap: "m", tabMethod: "x" };
@@ -85,10 +96,27 @@ function init() {
     document.querySelector(".grid").classList.toggle("mapfull", tabs[id] === "m");
     document.body.classList.toggle("mapmode", tabs[id] === "m");
     window.scrollTo(0, 0);
-    setTimeout(() => { map.invalidateSize(); if (!selected) map.fitBounds(distLayer.getBounds(), { padding: [10, 10] }); }, 60);
+    setTimeout(() => { map.invalidateSize(); if (!selected) map.fitBounds(curLayer().getBounds(), { padding: [10, 10] }); }, 60);
   });
   document.getElementById("mLevels").innerHTML = levelList();
   render();
+}
+
+function fillPick() {
+  const pick = document.getElementById("pick");
+  const opts = mode === "dist"
+    ? DIST.features.map(f => f.properties).sort((a, b) => a.pro.localeCompare(b.pro, "th") || a.th.localeCompare(b.th, "th"))
+        .map(p => [p.code, `${p.th} (${p.pro === "กรุงเทพมหานคร" ? "กทม." : p.pro})`])
+    : BR.features.map(f => f.properties).sort((a, b) => a.name.localeCompare(b.name, "th")).map(p => [p.code, "สาขา" + p.name]);
+  pick.innerHTML = `<option value="">${mode === "dist" ? "ค้นหาเขต/อำเภอ…" : "ค้นหาสาขา…"}</option>` + opts.map(([c, t]) => `<option value="${c}">${esc(t)}</option>`).join("");
+  pick.setAttribute("aria-label", mode === "dist" ? "ค้นหาเขต/อำเภอ" : "ค้นหาสาขา");
+}
+function setModeButtons() { document.querySelectorAll("#layerSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.m === mode)); }
+function setMode(m) {
+  if (m === mode) return;
+  map.removeLayer(curLayer()); mode = m; curLayer().addTo(map);
+  try { localStorage.setItem("ecw-mode", m); } catch (e) {}
+  selected = null; fillPick(); setModeButtons(); render();
 }
 
 function levelList() {
@@ -99,11 +127,12 @@ function levelList() {
 // ---------- วาด ----------
 function render() {
   const surf = css("--surface"), ink = css("--ink");
-  distLayer.eachLayer(l => {
-    const p = l.feature.properties, v = D.districts[p.code]?.f[hi] ?? null, li = lvlOf(v), sel = selected === p.code;
-    l.setStyle({ fillColor: colorOf(li), color: sel ? ink : surf, weight: sel ? 3 : 1, fillOpacity: v == null ? .12 : .34, dashArray: v == null ? "3 3" : null });
-    const parts = (D.districts[p.code]?.parts || []).slice(0, 3).map(x => `สถานีสูบจ่าย${x[0]} ${Math.round(x[1] * 100)}%`).join(", ");
-    l.bindTooltip(`<b>${dName(p)}</b><br>EC ${fmt(v)} µS/cm · ${v == null ? (hi ? "ยังคาดการณ์ไม่ได้" : "ไม่มีข้อมูล") : NAMES[li]}<br><span style="opacity:.75">${parts}</span>`, { sticky: true });
+  const A = AREA(), br = mode === "branch";
+  curLayer().eachLayer(l => {
+    const p = l.feature.properties, v = A[p.code]?.f[hi] ?? null, li = lvlOf(v), sel = selected === p.code;
+    l.setStyle({ fillColor: colorOf(li), color: sel ? ink : (br ? css("--accent") : surf), weight: sel ? 3 : (br ? 1.5 : 1), fillOpacity: v == null ? .12 : .34, dashArray: v == null ? "3 3" : null });
+    const parts = (A[p.code]?.parts || []).slice(0, 3).map(x => `สถานีสูบจ่าย${x[0]} ${Math.round(x[1] * 100)}%`).join(", ");
+    l.bindTooltip(`<b>${areaName(p)}</b><br>EC ${fmt(v)} µS/cm · ${v == null ? (hi ? "ยังคาดการณ์ไม่ได้" : "ไม่มีข้อมูล") : NAMES[li]}<br><span style="opacity:.75">${parts}</span>`, { sticky: true });
   });
   Object.entries(D.stations).forEach(([c, s]) => {
     const v = s.f[hi], li = lvlOf(v);
@@ -141,13 +170,13 @@ function renderLegend() {
 function renderDetail() {
   const el = document.getElementById("detail");
   if (!selected) {
-    el.innerHTML = `<p class="small" style="margin:0">แตะเขตหรือหมุดบนแผนที่ หรือเลือกจากช่องค้นหา เพื่อดูว่าพื้นที่นั้นรับน้ำจากที่ไหน และค่าที่คาดการณ์ 48 ชั่วโมง · หมุด = สถานีตรวจวัด สีพื้นเขต = ค่าสูงสุดของพื้นที่จ่ายน้ำที่ครอบคลุมเขตนั้น</p>`;
+    el.innerHTML = `<p class="small" style="margin:0">${mode === "dist" ? "แตะเขตหรือหมุดบนแผนที่" : "แตะพื้นที่สาขาหรือหมุดบนแผนที่"} หรือเลือกจากช่องค้นหา เพื่อดูว่าพื้นที่นั้นรับน้ำจากที่ไหน และค่าที่คาดการณ์ 48 ชั่วโมง · หมุด = สถานีตรวจวัด สีพื้น = ค่าสูงสุดของพื้นที่จ่ายน้ำที่ครอบคลุมพื้นที่นั้นตั้งแต่ 10%</p>`;
     return;
   }
-  const p = DIST.features.find(f => f.properties.code === selected).properties, d = D.districts[selected], v = d.f[hi], li = lvlOf(v);
+  const p = areaProps(selected), d = AREA()[selected], v = d.f[hi], li = lvlOf(v);
   const parts = d.parts.map(x => { const z = D.zones[x[0]]; return `${Math.round(x[1] * 100)}% สถานีสูบจ่าย${x[0]} <span class="small">(โรงผลิต${z.plant} · น้ำดิบ${SRC[z.src]})</span>`; }).join("<br>");
   el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px 18px;align-items:baseline;justify-content:space-between">
-      <div><div class="small">${p.pro}</div><h2 style="font-family:var(--f-display);font-size:20px;margin:0">${p.pro === "กรุงเทพมหานคร" ? "เขต" : "อำเภอ"}${p.th}</h2></div>
+      <div><div class="small">${mode === "dist" ? p.pro : "สาขาการประปา (ขอบเขตตามไฟล์ KMZ)"}</div><h2 style="font-family:var(--f-display);font-size:20px;margin:0">${mode === "dist" ? (p.pro === "กรุงเทพมหานคร" ? "เขต" : "อำเภอ") + p.th : "สาขา" + p.name}</h2></div>
       <div style="display:flex;gap:10px;align-items:baseline"><span class="big" style="color:${colorOf(li)}">${fmt(v)}</span><span class="small">µS/cm</span>${statusPill(li)}</div></div>
     <dl class="kv"><dt>ความเค็มโดยประมาณ</dt><dd>${v == null ? "–" : "~" + salt(v) + " g/L"}</dd><dt>รับน้ำจาก</dt><dd>${parts}</dd></dl>
     <div class="small" style="margin-top:10px">คาดการณ์ (µS/cm)</div>
@@ -191,7 +220,8 @@ function renderTrend() {
   const hist = { samlae: S.samlae || [], bangkhen_out: S.bangkhen_out || [] };
   // เส้นคาดการณ์ = ทางออกโรงผลิตบางเขน (ต่อจากเส้นย้อนหลัง) — ไม่ใช้ค่าเฉลี่ยทุกสถานี เพราะจำนวนสถานีที่คาดได้ลดลงตามเวลา
   const avgF = D.horizons.map((h, i) => { const v = D.plants["บางเขน"]?.f[i]; return v == null ? null : [now + h * 3600e3, v]; }).filter(Boolean);
-  const selF = selected ? D.horizons.map((h, i) => D.districts[selected].f[i] == null ? null : [now + h * 3600e3, D.districts[selected].f[i]]).filter(Boolean) : [];
+  const SA = selected ? AREA()[selected] : null;
+  const selF = SA ? D.horizons.map((h, i) => SA.f[i] == null ? null : [now + h * 3600e3, SA.f[i]]).filter(Boolean) : [];
   const pts = [...Object.values(hist).flat().map(p => [new Date(p[0]).getTime(), p[1]]), ...avgF, ...selF];
   let lo = 0, hiV = Math.max(300, ...pts.map(p => p[1]));
   hiV = Math.ceil(hiV / 100) * 100;
@@ -217,7 +247,7 @@ function renderTrend() {
   document.getElementById("trend").innerHTML = svg + `<div class="chart-legend">
     <span><i style="background:${acc2}"></i>น้ำดิบสำแล</span><span><i style="background:${acc}"></i>ทางออกโรงผลิตบางเขน</span>
     <span><i style="background:repeating-linear-gradient(90deg,${acc} 0 5px,transparent 5px 8px)"></i>โรงผลิตบางเขน (คาดการณ์)</span>
-    ${selected ? `<span><i style="background:${css("--l3")}"></i>${dName(DIST.features.find(f => f.properties.code === selected).properties)}</span>` : ""}
+    ${selected ? `<span><i style="background:${css("--l3")}"></i>${areaName(areaProps(selected))}</span>` : ""}
     <span><i style="background:${warn}"></i>ระดับเฝ้าระวัง</span></div>
     ${enough ? "" : `<p class="small" style="margin:6px 0 0">ระบบเริ่มเก็บข้อมูลเมื่อ 17 ต.ค. 2569 เส้นย้อนหลังและค่าคาดการณ์จะครบเมื่อสะสมข้อมูลได้ 2–3 วัน</p>`}`;
 }
@@ -235,7 +265,7 @@ function renderOutlook() {
 
 function select(code, zoom) {
   selected = code; document.getElementById("pick").value = code || "";
-  if (code && zoom) distLayer.eachLayer(l => { if (l.feature.properties.code === code) map.fitBounds(l.getBounds(), { maxZoom: 13, padding: [40, 40] }); });
+  if (code && zoom) curLayer().eachLayer(l => { if (l.feature.properties.code === code) map.fitBounds(l.getBounds(), { maxZoom: 13, padding: [40, 40] }); });
   render();
 }
 

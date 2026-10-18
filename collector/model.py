@@ -180,17 +180,19 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
             ps_known = any(stations[c]["f"][i] is not None for c in z["ps_stations"] if c in stations)
             f.append(agg(codes, i) if ps_known else None)
         zones[ps] = {"plant": z["plant"], "src": z["src"], "stations": codes, "f": f}
-    districts = {}
-    for dc, parts in cfg["district_zones"].items():
-        use = [p for p in parts if p[1] >= 0.1]
+    def area(parts):
+        use = [p for p in parts if p[1] >= 0.1]   # โซนที่ครอบคลุมพื้นที่ ≥10%
         f = []
         for i in range(len(HORIZONS)):
             vs = [zones[p[0]]["f"][i] for p in use]
             f.append(max(vs) if vs and None not in vs else None)
-        districts[dc] = {"parts": parts, "f": f}
+        return {"parts": parts, "f": f}
+
+    districts = {dc: area(parts) for dc, parts in cfg["district_zones"].items()}
+    branches = {bc: dict(area(parts), name=cfg["branch_names"][bc]) for bc, parts in cfg.get("branch_zones", {}).items()}
     plants = {p: {"src": v["src"], "f": [agg(v["stations"], i) for i in range(len(HORIZONS))]} for p, v in cfg["plants"].items()}
 
-    return {"horizons": HORIZONS, "stations": stations, "zones": zones, "districts": districts, "plants": plants,
+    return {"horizons": HORIZONS, "stations": stations, "zones": zones, "districts": districts, "branches": branches, "plants": plants,
             "calib": {p: {k: {"offset": round(v[0], 1), "pairs": v[1]} for k, v in c.items()} for p, c in calib.items()},
             "series": {
                 "samlae": [[t.isoformat(), round(v, 1)] for t, v in samlae.p if t > now - timedelta(hours=72)],
