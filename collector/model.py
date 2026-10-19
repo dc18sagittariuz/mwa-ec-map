@@ -88,23 +88,31 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
 
     outlets = {p: mean_series([tw_series[c] for c in v["stations"] if c in tw_series]) for p, v in cfg["plants"].items()}
     samlae, siphon = raw_series.get("S1", Series([])), raw_series.get("S2", Series([]))
+    # จุดอ้างอิง = ทางออกโรงผลิตบางเขน (ค่าเฉลี่ย TR1–3) — ทุกสถานีฝั่งเจ้าพระยามีเวลาหน่วง/อัตราส่งต่อเทียบจุดนี้
+    ref = mean_series([tw_series[c] for c in ("SP01", "SP02", "SP03") if c in tw_series])
+    rup = cfg.get("ref_upstream_h", {"samlae": up["บางเขน"], "siphon": up["บางเขน"] - SIPHON_FROM_SAMLAE})
 
-    # ค่าชดเชย น้ำดิบ → ทางออกโรงผลิต (median ย้อนหลัง; ถ้าข้อมูลยังน้อยใช้ 0)
-    def raw_offset(plant, raw, lag):
-        out = outlets.get(plant)
+    # ค่าชดเชย น้ำดิบ → จุดอ้างอิง (median ย้อนหลัง; ถ้าข้อมูลยังน้อยใช้ 0)
+    def raw_offset(raw, lag):
         diffs = []
-        if out and raw:
-            for t, v in out.p[-200:]:
+        if ref and raw:
+            for t, v in ref.p[-200:]:
                 rv = raw.at(t - timedelta(hours=lag))
                 if rv is not None:
                     diffs.append(v - rv)
         return (median(diffs), len(diffs)) if len(diffs) >= 6 else (0.0, len(diffs))
 
-    calib = {}
-    for p, info in cfg["plants"].items():
-        if info["src"] != "CP":
-            continue
-        calib[p] = {"samlae": raw_offset(p, samlae, up[p]), "siphon": raw_offset(p, siphon, up[p] - SIPHON_FROM_SAMLAE)}
+    cal = {"samlae": raw_offset(samlae, rup["samlae"]), "siphon": raw_offset(siphon, rup["siphon"])}
+    # ค่าที่จุดอ้างอิง ณ เวลา t: ใช้ค่าวัดจริงก่อน ถ้ายังไม่ถึงให้ส่งต่อจากไซฟอน/สำแล
+    REF_CANDS = [("outlet", ref, 0, 0.0), ("siphon", siphon, rup["siphon"], cal["siphon"][0]), ("samlae", samlae, rup["samlae"], cal["samlae"][0])]
+
+    def ref_at(t):
+        for name, ser, lag, off in REF_CANDS:
+            if ser:
+                v = ser.at(t - timedelta(hours=lag))
+                if v is not None:
+                    return v + off, name
+        return None, None
 
     # ---------- ค่าล่าสุดของสถานี ----------
     newest = max((r["t"] for r in latest_tw), default=now)
@@ -115,54 +123,40 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
         r = live.get(code)
         ec_now = r["ec"] if r else None
         stale = (r is None) or (newest - r["t"] > timedelta(hours=STALE_H)) or ec_now is None
-        f = meta["from_plant_h"]
         plant = meta["plant"]
-        out = outlets.get(plant)
-        # ค่าชดเชยของสถานีเทียบทางออกโรงผลิต
-        diffs = []
+        L, k = meta.get("lag_bk_h"), meta.get("gain", 0.0) or 0.0
+        linked = L is not None and k > 0
+        # ค่าชดเชยของสถานี: median( EC สถานี − gain × อ้างอิง(t − L) ) ย้อนหลัง
+        st_off = None
         ser = tw_series.get(code)
-        if ser and out:
-            for t, v in ser.p[-150:]:
-                ov = out.at(t - timedelta(hours=f))
-                if ov is not None:
-                    diffs.append(v - ov)
-        if diffs:
-            st_off = median(diffs)
-        elif not stale and out and out.at(r["t"]) is not None:
-            st_off = ec_now - out.at(r["t"])
-        else:
-            st_off = 0.0
-
-        cands = [("outlet", out, f, 0.0)]
-        if meta["src"] == "CP":
-            c = calib.get(plant, {})
-            cands.append(("siphon", siphon, up[plant] - SIPHON_FROM_SAMLAE + f, c.get("siphon", (0, 0))[0]))
-            cands.append(("samlae", samlae, up[plant] + f, c.get("samlae", (0, 0))[0]))
+        if linked and ser and ref:
+            diffs = [v - k * rv for t, v in ser.p[-150:] for rv in [ref.at(t - timedelta(hours=L))] if rv is not None]
+            if diffs:
+                st_off = median(diffs)
+        if linked and st_off is None and not stale:
+            rv, _ = ref_at(r["t"] - timedelta(hours=L))
+            if rv is not None:
+                st_off = ec_now - k * rv
 
         fc, how = [], []
         for h in HORIZONS:
             T = now + timedelta(hours=h)
             if h == 0 and not stale:
                 fc.append(round(ec_now, 1)); how.append("measured"); continue
-            val = None
-            for name, s, lag, off in cands:
-                if not s:
-                    continue
-                v = s.at(T - timedelta(hours=lag))
-                if v is not None:
-                    val, src = v + off + st_off, name
-                    break
-            if val is None and meta["src"] == "MK" and not stale:
-                val, src = ec_now, "persist"       # ฝั่งแม่กลอง: คงค่าล่าสุด
-            if stale and val is not None and h == 0:
-                pass
+            val, src = None, "unknown"
+            if linked and st_off is not None:
+                rv, src0 = ref_at(T - timedelta(hours=L))
+                if rv is not None:
+                    val, src = st_off + k * rv, src0
+            elif not linked and not stale:
+                val, src = ec_now, "persist"       # ไม่รับน้ำฝั่งเจ้าพระยา: คงค่าล่าสุด
             fc.append(None if val is None else round(val, 1))
-            how.append(src if val is not None else "unknown")
+            how.append(src)
         stations[code] = {
             "name": (r or {}).get("name") or meta["name"], "lat": meta["lat"], "lon": meta["lon"],
             "plant": plant, "src": meta["src"], "zone": meta["zone"], "district": meta["district"],
             "ec": ec_now, "salt": (r or {}).get("salt"), "t": r["t"].isoformat() if r else None, "stale": stale,
-            "from_plant_h": f, "lag_samlae_h": (up[plant] + f) if meta["src"] == "CP" else None, "lag_src": meta["lag_src"],
+            "lag_samlae_h": (rup["samlae"] + L) if linked else None, "gain": k, "fit": meta.get("fit"),
             "f": fc, "how": how,
         }
 
@@ -193,7 +187,7 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
     plants = {p: {"src": v["src"], "f": [agg(v["stations"], i) for i in range(len(HORIZONS))]} for p, v in cfg["plants"].items()}
 
     return {"horizons": HORIZONS, "stations": stations, "zones": zones, "districts": districts, "branches": branches, "plants": plants,
-            "calib": {p: {k: {"offset": round(v[0], 1), "pairs": v[1]} for k, v in c.items()} for p, c in calib.items()},
+            "calib": {k: {"offset": round(v[0], 1), "pairs": v[1]} for k, v in cal.items()},
             "series": {
                 "samlae": [[t.isoformat(), round(v, 1)] for t, v in samlae.p if t > now - timedelta(hours=72)],
                 "siphon": [[t.isoformat(), round(v, 1)] for t, v in siphon.p if t > now - timedelta(hours=72)],

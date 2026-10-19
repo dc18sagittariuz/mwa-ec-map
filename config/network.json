@@ -789,7 +789,10 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 0,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 0,
+   "gain": 1.0,
+   "fit": "ref"
   },
   "SP02": {
    "name": "สถานีสูบส่งน้ำบางเขน 2",
@@ -800,7 +803,10 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 0,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 0,
+   "gain": 1.0,
+   "fit": "ref"
   },
   "SP03": {
    "name": "สถานีสูบส่งน้ำบางเขน 3",
@@ -811,7 +817,10 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 0,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 0,
+   "gain": 1.0,
+   "fit": "ref"
   },
   "SP04": {
    "name": "สถานีสูบจ่ายน้ำบางเขน 1",
@@ -822,7 +831,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 0,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 0,
+   "gain": 0.99,
+   "fit": "2567",
+   "fit_r": 0.967
   },
   "SP05": {
    "name": "สถานีสูบจ่ายน้ำบางเขน 2",
@@ -833,7 +846,10 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 0,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 0,
+   "gain": 0.99,
+   "fit": "เทียบ SP04"
   },
   "SP06": {
    "name": "โรงงานผลิตน้ำธนบุรี",
@@ -844,7 +860,11 @@
    "plant": "ธนบุรี",
    "src": "CP",
    "from_plant_h": 0,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 32,
+   "gain": 0.88,
+   "fit": "2567",
+   "fit_r": 0.917
   },
   "SP07": {
    "name": "โรงงานผลิตน้ำสามเสน 1",
@@ -855,7 +875,10 @@
    "plant": "สามเสน",
    "src": "CP",
    "from_plant_h": 0,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 37,
+   "gain": 0.74,
+   "fit": "เทียบ SP09"
   },
   "SP08": {
    "name": "โรงงานผลิตน้ำสามเสน 2",
@@ -866,7 +889,10 @@
    "plant": "สามเสน",
    "src": "CP",
    "from_plant_h": 0,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 37,
+   "gain": 0.74,
+   "fit": "เทียบ SP09"
   },
   "SP09": {
    "name": "โรงงานผลิตน้ำสามเสน 3",
@@ -877,7 +903,11 @@
    "plant": "สามเสน",
    "src": "CP",
    "from_plant_h": 0,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 37,
+   "gain": 0.74,
+   "fit": "2567",
+   "fit_r": 0.939
   },
   "SP10": {
    "name": "โรงงานผลิตน้ำสามเสน 4",
@@ -888,7 +918,10 @@
    "plant": "สามเสน",
    "src": "CP",
    "from_plant_h": 0,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 37,
+   "gain": 0.74,
+   "fit": "เทียบ SP09"
   },
   "SP11": {
    "name": "สถานีสูบส่งน้ำมหาสวัสดิ์",
@@ -899,7 +932,10 @@
    "plant": "มหาสวัสดิ์",
    "src": "MK",
    "from_plant_h": 0,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": null,
+   "gain": 0.0,
+   "fit": "table"
   },
   "SP12": {
    "name": "สถานีสูบจ่ายน้ำมหาสวัสดิ์",
@@ -910,7 +946,10 @@
    "plant": "มหาสวัสดิ์",
    "src": "MK",
    "from_plant_h": 0,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": null,
+   "gain": 0.0,
+   "fit": "table"
   },
   "SW01": {
    "name": "สถานีสูบจ่ายน้ำลุมพินี",
@@ -921,7 +960,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 5.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 6,
+   "gain": 0.87,
+   "fit": "2567",
+   "fit_r": 0.988
   },
   "SW02": {
    "name": "สถานีสูบจ่ายน้ำลาดพร้าว",
@@ -932,7 +975,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 4,
+   "gain": 0.94,
+   "fit": "2567",
+   "fit_r": 0.985
   },
   "SW03": {
    "name": "สถานีสูบจ่ายน้ำคลองเตย",
@@ -943,7 +990,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 5.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 5,
+   "gain": 0.91,
+   "fit": "2567",
+   "fit_r": 0.964
   },
   "SW04": {
    "name": "สถานีสูบจ่ายน้ำสำโรง",
@@ -954,7 +1005,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 7.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 9,
+   "gain": 0.88,
+   "fit": "2567",
+   "fit_r": 0.988
   },
   "SW05": {
    "name": "สถานีสูบจ่ายน้ำมีนบุรี",
@@ -965,7 +1020,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 7.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 8,
+   "gain": 0.86,
+   "fit": "2567",
+   "fit_r": 0.949
   },
   "SW06": {
    "name": "สถานีสูบจ่ายน้ำลาดกระบัง",
@@ -976,7 +1035,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 8.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 9,
+   "gain": 0.87,
+   "fit": "2567",
+   "fit_r": 0.973
   },
   "SW07": {
    "name": "สถานีสูบจ่ายน้ำบางพลี",
@@ -987,7 +1050,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 12.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 12,
+   "gain": 0.9,
+   "fit": "2567",
+   "fit_r": 0.979
   },
   "SW08": {
    "name": "สถานีสูบจ่ายน้ำราษฎร์บูรณะ",
@@ -998,7 +1065,10 @@
    "plant": "มหาสวัสดิ์",
    "src": "MK",
    "from_plant_h": 6.1,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": null,
+   "gain": 0.0,
+   "fit": "table"
   },
   "SW09": {
    "name": "สถานีสูบจ่ายน้ำเพชรเกษม",
@@ -1009,7 +1079,10 @@
    "plant": "มหาสวัสดิ์",
    "src": "MK",
    "from_plant_h": 2.1,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": null,
+   "gain": 0.0,
+   "fit": "table"
   },
   "SW10": {
    "name": "สถานีสูบจ่ายน้ำท่าพระ",
@@ -1020,7 +1093,10 @@
    "plant": "มหาสวัสดิ์",
    "src": "MK",
    "from_plant_h": 13.3,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": null,
+   "gain": 0.0,
+   "fit": "table"
   },
   "SW11": {
    "name": "สถานีสูบจ่ายน้ำพหลโยธิน",
@@ -1031,7 +1107,10 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 2,
-   "lag_src": "G"
+   "lag_src": "G",
+   "lag_bk_h": 2,
+   "gain": 0.82,
+   "fit": "table"
   },
   "SM01": {
    "name": "สำนักงานประปาสาขานนทบุรี",
@@ -1042,7 +1121,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 4,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 4,
+   "gain": 0.73,
+   "fit": "2567",
+   "fit_r": 0.979
   },
   "SM02": {
    "name": "สำนักงานประปาสาขาทุ่งมหาเมฆ",
@@ -1053,7 +1136,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 6.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 8,
+   "gain": 0.56,
+   "fit": "2567",
+   "fit_r": 0.916
   },
   "SM03": {
    "name": "สำนักงานประปาสาขาสุขุมวิท-พระโขนง",
@@ -1064,7 +1151,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 7.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 8,
+   "gain": 0.73,
+   "fit": "2567",
+   "fit_r": 0.959
   },
   "SM04": {
    "name": "สำนักงานประปาสาขาสมุทรปราการ",
@@ -1075,7 +1166,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 10.0,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 12,
+   "gain": 0.78,
+   "fit": "2567",
+   "fit_r": 0.97
   },
   "SM05": {
    "name": "สำนักงานประปาสาขามีนบุรี",
@@ -1086,7 +1181,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 14.0,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 13,
+   "gain": 0.63,
+   "fit": "2567",
+   "fit_r": 0.926
   },
   "SM06": {
    "name": "สำนักงานประปาสาขาบางบัวทอง",
@@ -1097,7 +1196,11 @@
    "plant": "มหาสวัสดิ์",
    "src": "MK",
    "from_plant_h": 4.1,
-   "lag_src": "E"
+   "lag_src": "E",
+   "lag_bk_h": 7,
+   "gain": 0,
+   "fit": "2567",
+   "fit_r": 0.012
   },
   "S001": {
    "name": "รร.เตรียมอุดมศึกษาน้อมเกล้า นนทบุรี",
@@ -1108,7 +1211,10 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 3.3,
-   "lag_src": "E"
+   "lag_src": "E",
+   "lag_bk_h": 3.3,
+   "gain": 0.82,
+   "fit": "table"
   },
   "S002": {
    "name": "รร.ทหารขนส่ง",
@@ -1119,7 +1225,10 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 2.2,
-   "lag_src": "E"
+   "lag_src": "E",
+   "lag_bk_h": 2.2,
+   "gain": 0.82,
+   "fit": "table"
   },
   "S003": {
    "name": "กองพันทหารสื่อสาร",
@@ -1130,7 +1239,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 4,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 5,
+   "gain": 0.94,
+   "fit": "2567",
+   "fit_r": 0.973
   },
   "S004": {
    "name": "รพ.ภูมิพลอดุลยเดช",
@@ -1141,7 +1254,10 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 2.7,
-   "lag_src": "E"
+   "lag_src": "E",
+   "lag_bk_h": 2.7,
+   "gain": 0.82,
+   "fit": "table"
   },
   "S005": {
    "name": "รพ.ซีจีเอช สายไหม",
@@ -1152,7 +1268,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 13,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 12,
+   "gain": 0.86,
+   "fit": "2567",
+   "fit_r": 0.945
   },
   "S006": {
    "name": "พระตำหนักจิตรลดารโหฐาน",
@@ -1163,7 +1283,11 @@
    "plant": "สามเสน",
    "src": "CP",
    "from_plant_h": 0.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 37,
+   "gain": 0.7,
+   "fit": "2567",
+   "fit_r": 0.929
   },
   "S007": {
    "name": "รพ.ศิริราช",
@@ -1174,7 +1298,11 @@
    "plant": "ธนบุรี",
    "src": "CP",
    "from_plant_h": 3,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 27,
+   "gain": 0.58,
+   "fit": "2567",
+   "fit_r": 0.952
   },
   "S008": {
    "name": "บ.โอสถสภา",
@@ -1185,7 +1313,10 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 6,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 6,
+   "gain": 0.82,
+   "fit": "table"
   },
   "S009": {
    "name": "บ้านเกร็ดตระการ",
@@ -1196,7 +1327,10 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 6.8,
-   "lag_src": "E"
+   "lag_src": "E",
+   "lag_bk_h": 6.8,
+   "gain": 0.82,
+   "fit": "table"
   },
   "S010": {
    "name": "ท้องฟ้าจำลอง",
@@ -1207,7 +1341,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 10.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 12,
+   "gain": 0.74,
+   "fit": "2567",
+   "fit_r": 0.933
   },
   "S011": {
    "name": "รพ.ศิครินทร์",
@@ -1218,7 +1356,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 10.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 15,
+   "gain": 0.83,
+   "fit": "2567",
+   "fit_r": 0.956
   },
   "S012": {
    "name": "รร.หาดอมราอักษรลักษณ์วิทยา",
@@ -1229,7 +1371,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 18.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 18,
+   "gain": 0.9,
+   "fit": "2567",
+   "fit_r": 0.979
   },
   "S013": {
    "name": "กระจกไทยอาซาฮี",
@@ -1240,7 +1386,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 11.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 12,
+   "gain": 0.68,
+   "fit": "2567",
+   "fit_r": 0.976
   },
   "S014": {
    "name": "โรงไฟฟ้าพระนครใต้",
@@ -1251,7 +1401,10 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 9.5,
-   "lag_src": "E"
+   "lag_src": "E",
+   "lag_bk_h": 9.5,
+   "gain": 0.82,
+   "fit": "table"
   },
   "S015": {
    "name": "บ.มหาจักรออโตพาร์ท",
@@ -1262,7 +1415,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 19.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 23,
+   "gain": 0.7,
+   "fit": "2567",
+   "fit_r": 0.792
   },
   "S016": {
    "name": "นิคมอุตสาหกรรมบางชัน",
@@ -1273,7 +1430,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 9.0,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 10,
+   "gain": 0.66,
+   "fit": "2567",
+   "fit_r": 0.837
   },
   "S017": {
    "name": "ศูนย์ไตเทียมเทียนฟ้าประชาการุณย์",
@@ -1284,7 +1445,10 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 8.3,
-   "lag_src": "E"
+   "lag_src": "E",
+   "lag_bk_h": 8.3,
+   "gain": 0.82,
+   "fit": "table"
   },
   "S018": {
    "name": "นิคมอุตสาหกรรมลาดกระบัง",
@@ -1295,7 +1459,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 13.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 16,
+   "gain": 0.8,
+   "fit": "2567",
+   "fit_r": 0.934
   },
   "S019": {
    "name": "ท่าอากาศยานสุวรรณภูมิ",
@@ -1306,7 +1474,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 9.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 12,
+   "gain": 0.78,
+   "fit": "2567",
+   "fit_r": 0.897
   },
   "S020": {
    "name": "ม.หัวเฉียวเฉลิมพระเกียรติ (บางพลี)",
@@ -1317,7 +1489,10 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 12.9,
-   "lag_src": "E"
+   "lag_src": "E",
+   "lag_bk_h": 12.9,
+   "gain": 0.82,
+   "fit": "table"
   },
   "S021": {
    "name": "นิคมอุตสาหกรรมบางพลี",
@@ -1328,7 +1503,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 17.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 17,
+   "gain": 0.85,
+   "fit": "2567",
+   "fit_r": 0.96
   },
   "S022": {
    "name": "สภ.คลองด่าน",
@@ -1339,7 +1518,11 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 37.5,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 38,
+   "gain": 0.82,
+   "fit": "2567",
+   "fit_r": 0.958
   },
   "S023": {
    "name": "นิคมอุตสาหกรรมบางปู",
@@ -1350,7 +1533,10 @@
    "plant": "บางเขน",
    "src": "CP",
    "from_plant_h": 15.5,
-   "lag_src": "E"
+   "lag_src": "E",
+   "lag_bk_h": 15.5,
+   "gain": 0.82,
+   "fit": "table"
   },
   "S024": {
    "name": "บ้านพักคนชราบางแค",
@@ -1361,7 +1547,10 @@
    "plant": "มหาสวัสดิ์",
    "src": "MK",
    "from_plant_h": 15.3,
-   "lag_src": "E"
+   "lag_src": "E",
+   "lag_bk_h": null,
+   "gain": 0.0,
+   "fit": "table"
   },
   "S025": {
    "name": "ศูนย์กีฬาเฉลิมพระเกียรติ",
@@ -1372,7 +1561,11 @@
    "plant": "มหาสวัสดิ์",
    "src": "MK",
    "from_plant_h": 9.1,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 15,
+   "gain": 0.08,
+   "fit": "2567",
+   "fit_r": 0.793
   },
   "S026": {
    "name": "มจธ. (บางขุนเทียน)",
@@ -1383,7 +1576,11 @@
    "plant": "มหาสวัสดิ์",
    "src": "MK",
    "from_plant_h": 14.1,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": 20,
+   "gain": 0.26,
+   "fit": "2567",
+   "fit_r": 0.909
   },
   "S027": {
    "name": "ม.เอเชียอาคเนย์",
@@ -1394,7 +1591,10 @@
    "plant": "มหาสวัสดิ์",
    "src": "MK",
    "from_plant_h": 8.1,
-   "lag_src": "T"
+   "lag_src": "T",
+   "lag_bk_h": null,
+   "gain": 0.0,
+   "fit": "table"
   },
   "S028": {
    "name": "เรือนจำพิเศษธนบุรี",
@@ -1405,7 +1605,10 @@
    "plant": "มหาสวัสดิ์",
    "src": "MK",
    "from_plant_h": 5.3,
-   "lag_src": "E"
+   "lag_src": "E",
+   "lag_bk_h": null,
+   "gain": 0.0,
+   "fit": "table"
   },
   "S029": {
    "name": "รร.บดินทรเดชา นนทบุรี",
@@ -1416,7 +1619,11 @@
    "plant": "มหาสวัสดิ์",
    "src": "MK",
    "from_plant_h": 2.6,
-   "lag_src": "E"
+   "lag_src": "E",
+   "lag_bk_h": 7,
+   "gain": 0,
+   "fit": "2567",
+   "fit_r": 0.038
   },
   "S030": {
    "name": "รร.ราชวินิต นนทบุรี",
@@ -1427,7 +1634,10 @@
    "plant": "มหาสวัสดิ์",
    "src": "MK",
    "from_plant_h": 2.6,
-   "lag_src": "E"
+   "lag_src": "E",
+   "lag_bk_h": null,
+   "gain": 0.0,
+   "fit": "table"
   },
   "S031": {
    "name": "สภ.ไทรน้อย",
@@ -1438,7 +1648,10 @@
    "plant": "มหาสวัสดิ์",
    "src": "MK",
    "from_plant_h": 7.6,
-   "lag_src": "E"
+   "lag_src": "E",
+   "lag_bk_h": null,
+   "gain": 0.0,
+   "fit": "table"
   },
   "S032": {
    "name": "รร.ตั้งพิรุฬห์ธรรม",
@@ -1449,7 +1662,11 @@
    "plant": "มหาสวัสดิ์",
    "src": "MK",
    "from_plant_h": 5.3,
-   "lag_src": "E"
+   "lag_src": "E",
+   "lag_bk_h": 30,
+   "gain": 0,
+   "fit": "2567",
+   "fit_r": 0.317
   },
   "S033": {
    "name": "รพ.สมเด็จพระปิ่นเกล้า",
@@ -1460,7 +1677,11 @@
    "plant": "มหาสวัสดิ์",
    "src": "MK",
    "from_plant_h": 14.2,
-   "lag_src": "E"
+   "lag_src": "E",
+   "lag_bk_h": 7,
+   "gain": 0,
+   "fit": "2567",
+   "fit_r": -0.077
   }
  },
  "salt_per_ec": 0.0004329,
@@ -1698,5 +1919,10 @@
   "B15": "พญาไท",
   "B16": "ลาดพร้าว",
   "B17": "ประชาชื่น"
- }
+ },
+ "ref_upstream_h": {
+  "samlae": 14,
+  "siphon": 7
+ },
+ "fit_note": "lag_bk_h = ชม. ที่สถานีช้ากว่าทางออกโรงผลิตบางเขน (ค่าเฉลี่ย TR1-3); gain = สัดส่วนการเปลี่ยนแปลงที่ส่งต่อถึงสถานี; fit=2567 คือคำนวณจากเหตุการณ์น้ำเค็ม มี.ค.-พ.ค. 2567, table = จากตาราง ก.พ. 64/ระยะทาง"
 }
