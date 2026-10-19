@@ -18,6 +18,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main   # เริ่มจาก commit ล่าสุดเสมอ (ไม่ใช่ commit ตอนสั่งรัน) กันชนกับรอบก่อนหน้า
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
