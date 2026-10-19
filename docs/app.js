@@ -205,6 +205,13 @@ function renderProv() {
   }).join("") + `<p class="small" style="margin:8px 0 0">แถบเต็ม = ${CUTS[1]} µS/cm (ระดับเฝ้าระวัง)</p>`;
 }
 
+// ช่วงคาดการณ์ไกลสุดที่ทราบ (น้ำที่จะถึงต้องผ่านจุดวัดต้นทางแล้ว เช่น บางเขนรู้ล่วงหน้าได้ ~17 ชม. จากสำแล)
+function farCell(f) {
+  let i = f.length - 1;
+  while (i > 0 && f[i] == null) i--;
+  if (i === 0) return `<div class="val">คาดการณ์<b>ยังไม่ทราบ</b></div>`;
+  return `<div class="val">คาดการณ์ (+${D.horizons[i]} ชม.)<b>${fmt(f[i])} µS/cm</b></div>`;
+}
 const ICON_RAW = `<svg class="ic" viewBox="0 0 24 32"><path d="M12 1C9 7 3 13.5 3 20a9 9 0 0 0 18 0C21 13.5 15 7 12 1Z"/></svg>`;
 const ICON_PLANT = `<svg class="ic" viewBox="0 0 24 24"><path d="M3 21V9l5 3V9l5 3V5h4l1 16H3Z"/></svg>`;
 function renderSrc() {
@@ -216,7 +223,7 @@ function renderSrc() {
   rows.push(raw("น้ำดิบ จุดสูบสำแล", "แม่น้ำเจ้าพระยา จ.ปทุมธานี", r.samlae), raw("ไซฟอนรังสิต", "คลองประปา ~7 ชม. หลังสำแล", r.siphon));
   Object.entries(D.plants).forEach(([n, p]) => {
     rows.push(`<div class="srcrow">${ICON_PLANT}<div class="nm">โรงผลิตน้ำ${n}<small>น้ำดิบ${SRC[p.src]}</small></div>${statusPill(lvlOf(p.f[0]))}
-      <div class="val">ค่า EC ปัจจุบัน<b>${fmt(p.f[0])} µS/cm</b></div><div class="val">คาดการณ์ (${D.horizons[last]} ชม.)<b>${p.f[last] == null ? "ยังไม่ทราบ" : fmt(p.f[last]) + " µS/cm"}</b></div></div>`);
+      <div class="val">ค่า EC ปัจจุบัน<b>${fmt(p.f[0])} µS/cm</b></div>${farCell(p.f)}</div>`);
   });
   document.getElementById("srcBox").innerHTML = rows.join("");
 }
