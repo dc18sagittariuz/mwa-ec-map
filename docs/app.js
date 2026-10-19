@@ -245,15 +245,17 @@ function renderTrend() {
   const selF = SA ? fc(SA.f) : [];
   const pts = [...raw, ...selF, ...PL.flatMap(p => [...p.h, ...p.f])];
   const vals = pts.map(p => p[1]);
-  let hiV = Math.ceil(Math.max(300, ...vals) / 50) * 50;
-  let lo = Math.max(0, Math.floor((Math.min(...vals, hiV) - 40) / 50) * 50);
-  if (hiV - lo < 150) lo = Math.max(0, hiV - 150);
+  const vmax = Math.max(300, ...vals), vmin = Math.min(...vals, vmax);
+  const step = [25, 50, 100, 200, 250, 500, 1000].find(st => (vmax - vmin + 40) / st <= 5) || 1000;
+  let hiV = Math.ceil((vmax + 10) / step) * step, lo = Math.max(0, Math.floor((vmin - 20) / step) * step);
+  if (hiV - lo < 3 * step) lo = Math.max(0, hiV - 3 * step);
+  const nT = Math.round((hiV - lo) / step);
   const x = t => L0 + (t - t0) / (t1 - t0) * (W - L0 - R0), y = v => T0 + (1 - (v - lo) / (hiV - lo)) * (H - T0 - B0);
   const line = (p, col, dash, wd = 2) => p.length > 1 ? `<path d="${p.map((q, i) => (i ? "L" : "M") + x(q[0]).toFixed(1) + " " + y(q[1]).toFixed(1)).join(" ")}" fill="none" stroke="${col}" stroke-width="${wd}" ${dash ? 'stroke-dasharray="5 4"' : ""} stroke-linejoin="round"/>` : "";
   const dots = (p, col) => p.map(q => `<circle cx="${x(q[0]).toFixed(1)}" cy="${y(q[1]).toFixed(1)}" r="3" fill="${css("--surface")}" stroke="${col}" stroke-width="2"/>`).join("");
   const mut = css("--muted"), grid = css("--line"), acc2 = css("--accent-2"), warn = css("--l2");
   let g = "";
-  for (let k = 0; k <= 4; k++) { const v = lo + (hiV - lo) * k / 4, yy = y(v); g += `<line x1="${L0}" x2="${W - R0}" y1="${yy}" y2="${yy}" stroke="${grid}"/><text x="${L0 - 6}" y="${yy + 4}" font-size="11" text-anchor="end" fill="${mut}">${fmt(v)}</text>`; }
+  for (let k = 0; k <= nT; k++) { const v = lo + step * k, yy = y(v); g += `<line x1="${L0}" x2="${W - R0}" y1="${yy}" y2="${yy}" stroke="${grid}"/><text x="${L0 - 6}" y="${yy + 4}" font-size="11" text-anchor="end" fill="${mut}">${fmt(v)}</text>`; }
   for (let h = -48; h <= 48; h += 12) { const t = now + h * 3600e3, xx = x(t); g += `<text x="${xx}" y="${H - 18}" font-size="11" text-anchor="middle" fill="${mut}">${h ? tShort(t) : "ตอนนี้"}</text><text x="${xx}" y="${H - 5}" font-size="10" text-anchor="middle" fill="${mut}">${h ? (h > 0 ? "+" : "") + h + " ชม." : ""}</text>`; }
   const wy = CUTS[2] != null && CUTS[2] < hiV && CUTS[2] > lo ? `<line x1="${L0}" x2="${W - R0}" y1="${y(CUTS[2])}" y2="${y(CUTS[2])}" stroke="${warn}" stroke-dasharray="3 3"/>` : "";
   const nowX = x(now), hx = x(hTime(hi).getTime());

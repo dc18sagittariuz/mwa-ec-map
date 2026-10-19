@@ -2,7 +2,7 @@
 :root{
   --bg:#f2f7fc; --surface:#ffffff; --ink:#132b45; --muted:#5f7590; --line:#e1ebf5; --soft:#eaf3fc;
   --accent:#1b6fd8; --accent-2:#3fa2ee; --accent-ink:#ffffff; --hero1:#eaf4ff; --hero2:#d8eafb;
-  --c-ss:#7a4fd6; --c-tb:#0e8fa8;
+  --c-ss:#7a4fd6; --c-tb:#c0398b;
   --l0:#22a884; --l1:#9fc73b; --l2:#f2b12c; --l3:#ea7134; --l4:#c8304a; --nodata:#c3cfdb;
   --f-display:"Prompt","IBM Plex Sans Thai",system-ui,sans-serif;
   --f-body:"IBM Plex Sans Thai",system-ui,sans-serif;
