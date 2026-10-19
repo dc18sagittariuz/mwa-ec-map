@@ -8,7 +8,7 @@ const colorOf = i => i < 0 ? css("--nodata") : css(LVC[i]);
 const fmt = v => v == null ? "–" : Math.round(v).toLocaleString("th-TH");
 const salt = v => (v * RATIO).toFixed(2);
 const SRC = { CP: "เจ้าพระยา", MK: "แม่กลอง" };
-const HOW = { measured: "ค่าวัดจริง", outlet: "คาดจากทางออกโรงผลิต", siphon: "คาดจากไซฟอนรังสิต", samlae: "คาดจากจุดสูบสำแล", persist: "คงค่าล่าสุด", unknown: "ยังคาดการณ์ไม่ได้" };
+const HOW = { measured: "ค่าวัดจริง", outlet: "คาดจากทางออกโรงผลิต", siphon: "คาดจากไซฟอนรังสิต", samlae: "คาดจากจุดสูบสำแล", persist: "คงค่าล่าสุด", suspect: "ค่าวัดล่าสุดกระโดดผิดปกติ (อาจเป็นเซนเซอร์) จึงใช้ค่ากลาง 24 ชม. แทน", unknown: "ยังคาดการณ์ไม่ได้" };
 const PROV = { "10": "กรุงเทพมหานคร", "12": "นนทบุรี", "11": "สมุทรปราการ" };
 const TZ = { timeZone: "Asia/Bangkok" };
 const tTH = (d, o = {}) => d ? new Date(d).toLocaleString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", ...TZ, ...o }) + " น." : "–";

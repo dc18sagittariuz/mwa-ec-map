@@ -9,7 +9,8 @@ from datetime import timedelta
 from statistics import median
 
 HORIZONS = [0, 6, 12, 18, 24, 30, 36, 42, 48]
-SIPHON_FROM_SAMLAE = 7          # สำแล → ไซฟอนรังสิต (ชม.)
+SIPHON_FROM_SAMLAE = 7
+VALID_LO, VALID_HI = 100, 20000   # µS/cm ค่าที่เป็นไปได้ของน้ำประปา          # สำแล → ไซฟอนรังสิต (ชม.)
 STALE_H = 6
 
 
@@ -79,7 +80,8 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
     # ---------- ชุดข้อมูลต้นทาง ----------
     tw_series = {}
     for r in tw_hist:
-        tw_series.setdefault(r["code"], []).append((r["t"], r["ec"]))
+        if r["ec"] is not None and VALID_LO <= r["ec"] <= VALID_HI:   # ตัดค่าเซนเซอร์ผิดปกติ (เช่น 0) ออกจากประวัติ
+            tw_series.setdefault(r["code"], []).append((r["t"], r["ec"]))
     tw_series = {k: Series(v) for k, v in tw_series.items()}
     raw_series = {}
     for r in raw_hist:
@@ -125,8 +127,22 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
     for code, meta in NET.items():
         r = live.get(code)
         ec_now = r["ec"] if r else None
+        qc = None
+        if ec_now is not None and not (VALID_LO <= ec_now <= VALID_HI):
+            ec_now, qc = None, "invalid"                       # ค่าเป็นไปไม่ได้ → ถือว่าไม่มีข้อมูล
         stale = (r is None) or (newest - r["t"] > timedelta(hours=STALE_H)) or ec_now is None
         plant = meta["plant"]
+        # ค่ากระโดดผิดปกติ: ต่างจากค่ากลาง 24 ชม. ของตัวเองมาก ทั้งที่ต้นทางไม่ได้เปลี่ยน → ใช้ค่ากลางแทนและติดป้าย
+        hist24 = [v for t, v in tw_series.get(code, Series([])).p if r and r["t"] - timedelta(hours=24) <= t < r["t"]]
+        if not stale and len(hist24) >= 6:
+            med = median(hist24)
+            if abs(ec_now - med) > max(150, 0.5 * med):
+                L0 = meta.get("lag_bk_h")
+                rv_now = ref.at(r["t"] - timedelta(hours=L0 or 0)) if ref else None
+                rv_old = ref.at(r["t"] - timedelta(hours=(L0 or 0) + 12)) if ref else None
+                upstream_moved = rv_now is not None and rv_old is not None and abs(rv_now - rv_old) > 100
+                if not upstream_moved:
+                    ec_now, qc = med, "suspect"
         L, k = meta.get("lag_bk_h"), meta.get("gain", 0.0) or 0.0
         linked = L is not None and k > 0
         # ค่าชดเชยของสถานี: median( EC สถานี − gain × อ้างอิง(t − L) ) ย้อนหลัง
@@ -145,7 +161,7 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
         for h in HORIZONS:
             T = now + timedelta(hours=h)
             if h == 0 and not stale:
-                fc.append(round(ec_now, 1)); how.append("measured"); continue
+                fc.append(round(ec_now, 1)); how.append("suspect" if qc == "suspect" else "measured"); continue
             val, src = None, "unknown"
             if linked and st_off is not None:
                 rv, src0 = ref_at(T - timedelta(hours=L))
@@ -160,7 +176,7 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
             "plant": plant, "src": meta["src"], "zone": meta["zone"], "district": meta["district"],
             "ec": ec_now, "salt": (r or {}).get("salt"), "t": r["t"].isoformat() if r else None, "stale": stale,
             "lag_samlae_h": (rup["samlae"] + L) if linked else None, "gain": k, "fit": meta.get("fit"),
-            "f": fc, "how": how,
+            "f": fc, "how": how, "qc": qc, "ec_raw": (r or {}).get("ec"),
         }
 
     # ---------- รวมเป็นโซน / เขต ----------
