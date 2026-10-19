@@ -146,7 +146,7 @@ function render() {
     const v = s.f[hi], li = lvlOf(v);
     markers[c].setIcon(L.divIcon({ className: "mk", html: pinSVG(colorOf(li)), iconSize: [18, 24], iconAnchor: [9, 24], popupAnchor: [0, -22] }));
     markers[c].bindPopup(`<b>${esc(s.name)}</b> <span class="small">${c}</span><br>EC <b>${fmt(v)}</b> µS/cm${v != null ? ` (~${salt(v)} g/L)` : ""}<br><span class="small">${HOW[s.how[hi]]}</span><br>`
-      + `รับน้ำจากโรงผลิต${s.plant} (${SRC[s.src]})${s.lag_samlae_h != null ? `<br>น้ำเดินทางจากสำแล ~${Math.round(s.lag_samlae_h)} ชม.` : ""}<br>`
+      + `รับน้ำจากโรงผลิต${s.plant} (${SRC[s.src]})${s.src === "MK" && s.gain > 0 ? ` · ผสมน้ำจากบางเขน ~${Math.round(s.gain * 100)}%` : ""}${s.lag_samlae_h != null ? `<br>น้ำเดินทางจากสำแล ~${Math.round(s.lag_samlae_h)} ชม.` : ""}<br>`
       + `<span class="small">ค่าวัดล่าสุด ${fmt(s.ec)} เมื่อ ${tTH(s.t, { year: undefined })}${s.stale ? " (ข้อมูลค้าง)" : ""}</span>`);
   });
   const t = hTime(hi);
