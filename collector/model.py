@@ -91,6 +91,7 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
     # จุดอ้างอิง = ทางออกโรงผลิตบางเขน (ค่าเฉลี่ย TR1–3) — ทุกสถานีฝั่งเจ้าพระยามีเวลาหน่วง/อัตราส่งต่อเทียบจุดนี้
     ref = mean_series([tw_series[c] for c in ("SP01", "SP02", "SP03") if c in tw_series])
     rup = cfg.get("ref_upstream_h", {"samlae": up["บางเขน"], "siphon": up["บางเขน"] - SIPHON_FROM_SAMLAE})
+    g = cfg.get("raw_gain", 1.0)   # อัตราส่งต่อ น้ำดิบ → ทางออกโรงผลิต
 
     # ค่าชดเชย น้ำดิบ → จุดอ้างอิง (median ย้อนหลัง; ถ้าข้อมูลยังน้อยใช้ 0)
     def raw_offset(raw, lag):
@@ -99,19 +100,19 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
             for t, v in ref.p[-200:]:
                 rv = raw.at(t - timedelta(hours=lag))
                 if rv is not None:
-                    diffs.append(v - rv)
-        return (median(diffs), len(diffs)) if len(diffs) >= 6 else (0.0, len(diffs))
+                    diffs.append(v - g * rv)
+        return (median(diffs), len(diffs)) if len(diffs) >= 6 else ((1 - g) * 330.0, len(diffs))
 
     cal = {"samlae": raw_offset(samlae, rup["samlae"]), "siphon": raw_offset(siphon, rup["siphon"])}
     # ค่าที่จุดอ้างอิง ณ เวลา t: ใช้ค่าวัดจริงก่อน ถ้ายังไม่ถึงให้ส่งต่อจากไซฟอน/สำแล
-    REF_CANDS = [("outlet", ref, 0, 0.0), ("siphon", siphon, rup["siphon"], cal["siphon"][0]), ("samlae", samlae, rup["samlae"], cal["samlae"][0])]
+    REF_CANDS = [("outlet", ref, 0, 0.0, 1.0), ("siphon", siphon, rup["siphon"], cal["siphon"][0], g), ("samlae", samlae, rup["samlae"], cal["samlae"][0], g)]
 
     def ref_at(t):
-        for name, ser, lag, off in REF_CANDS:
+        for name, ser, lag, off, gain in REF_CANDS:
             if ser:
                 v = ser.at(t - timedelta(hours=lag))
                 if v is not None:
-                    return v + off, name
+                    return off + gain * v, name
         return None, None
 
     # ---------- ค่าล่าสุดของสถานี ----------
