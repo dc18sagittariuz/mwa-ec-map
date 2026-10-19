@@ -223,14 +223,30 @@ function render() {
 function stVals() { return Object.entries(D.stations).map(([c, s]) => ({ c, s, v: s.f[hi] })).filter(x => x.v != null); }
 
 function renderKPI() {
-  const vs = stVals();
+  // ตอนนี้: นับเฉพาะค่าวัดจริง (สถานีที่ข้อมูลค้างจะได้ค่าประมาณจากต้นทาง ไม่นำมานับ)
+  const vs = stVals().filter(x => hi > 0 || ["measured", "suspect"].includes(x.s.how[0]));
   const avg = vs.length ? vs.reduce((a, b) => a + b.v, 0) / vs.length : null;
   const mx = vs.reduce((a, b) => (!a || b.v > a.v ? b : a), null);
   document.getElementById("kN").textContent = vs.length;
   document.getElementById("kAvg").textContent = fmt(avg);
   document.getElementById("kMax").textContent = fmt(mx?.v);
   document.getElementById("kMax").style.color = mx ? colorOf(lvlOf(mx.v)) : "";
-  document.getElementById("kMaxAt").textContent = mx ? mx.s.name : "";
+  // หมายเหตุช่วงเวลา: ค่าปัจจุบัน = ค่าวัดล่าสุดของแต่ละสถานี (เวลาวัดต่างกันเล็กน้อย) / คาดการณ์ = ณ เวลาที่เลือก
+  const hm = d => tShort(d) + " น.";
+  const day = d => new Date(d).toLocaleDateString("th-TH", { day: "numeric", month: "short", ...TZ });
+  let note, maxNote;
+  if (hi === 0) {
+    const ts = vs.map(x => x.s.t).filter(Boolean).map(t => new Date(t).getTime());
+    const a = Math.min(...ts), b = Math.max(...ts);
+    note = ts.length ? `ค่าวัดล่าสุดของแต่ละสถานี ${day(b)} <span class="nw">${a === b ? hm(b) : tShort(a) + "–" + hm(b)}</span>` : "";
+    maxNote = mx ? `${esc(mx.s.name)} · <span class="nw">วัดเมื่อ ${hm(mx.s.t)}</span>` : "";
+  } else {
+    note = `ค่าคาดการณ์ ณ ${day(hTime(hi))} ${hm(hTime(hi))} (+${D.horizons[hi]} ชม.) เฉพาะ ${vs.length} สถานีที่คาดได้`;
+    maxNote = mx ? `${esc(mx.s.name)} · <span class="nw">คาดการณ์ ณ ${hm(hTime(hi))}</span>` : "";
+  }
+  document.getElementById("kAvgNote").innerHTML = note;
+  document.getElementById("kNNote").textContent = hi === 0 ? `จาก ${Object.keys(D.stations).length} สถานี · ข้อมูลเก่าเกิน 6 ชม. ไม่นับ` : `ที่คาดการณ์ได้ ณ +${D.horizons[hi]} ชม.`;
+  document.getElementById("kMaxAt").innerHTML = maxNote;
 }
 
 function renderLegend() {
