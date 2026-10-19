@@ -195,6 +195,8 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
                 "samlae": [[t.isoformat(), round(v, 1)] for t, v in samlae.p if t > now - timedelta(hours=72)],
                 "siphon": [[t.isoformat(), round(v, 1)] for t, v in siphon.p if t > now - timedelta(hours=72)],
                 "bangkhen_out": [[t.isoformat(), round(v, 1)] for t, v in outlets["บางเขน"].p if t > now - timedelta(hours=72)],
+                "samsen_out": [[t.isoformat(), round(v, 1)] for t, v in outlets["สามเสน"].p if t > now - timedelta(hours=72)],
+                "thonburi_out": [[t.isoformat(), round(v, 1)] for t, v in outlets["ธนบุรี"].p if t > now - timedelta(hours=72)],
             }}
 
 

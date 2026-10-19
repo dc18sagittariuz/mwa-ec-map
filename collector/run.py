@@ -55,6 +55,13 @@ def main():
     tw_hist = store.read_recent("twqms", now, 7)
     raw_hist = store.read_recent("raw", now, 7)
     flow_hist = store.read_recent("flow", now, 7)
+    # ชั่วโมงล่าสุดของกรมชลฯ มักยังไม่มีค่าปริมาณน้ำ (มีแค่ระดับน้ำ) → ใช้ค่าล่าสุดที่มีภายใน 12 ชม.
+    for code, v in flow.items():
+        if v.get("q") is None:
+            prev = [x for x in flow_hist if x["code"] == code and x.get("q") is not None and v["t"] - x["t"] <= timedelta(hours=12)]
+            if prev:
+                p = max(prev, key=lambda x: x["t"])
+                v.update(q=p["q"], dq=p.get("dq"), q_t=p["t"])
     if not tw:
         last = {}
         for r in tw_hist:
@@ -83,7 +90,7 @@ def main():
         "generated": iso(now),
         "status": status,
         "raw": {"samlae": rawpick("S1"), "siphon": rawpick("S2")},
-        "flow": {k: {**v, "t": iso(v["t"])} for k, v in flow.items()},
+        "flow": {k: {**v, "t": iso(v["t"]), "q_t": iso(v.get("q_t") or v["t"])} for k, v in flow.items()},
         "chao_phraya": sorted([{"id": r["id"], "name": r.get("name"), "km": r["km"], "salt": r.get("salt"), "cond": r.get("cond")}
                                for r in raw if r.get("river") == "chao_phraya" and r.get("km") is not None],
                               key=lambda x: x["km"]),
