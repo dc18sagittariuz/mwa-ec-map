@@ -182,3 +182,10 @@ body.mapmode .grid.mapfull #map{height:calc(100dvh - 150px);min-height:260px}
   .legend{left:8px;bottom:8px;padding:6px 10px;gap:4px 10px;font-size:11px}
   .legend .it small{display:none}
 }
+
+/* ปุ่มตำแหน่งปัจจุบัน + ข้อความแจ้ง */
+.locate-ctl a{display:flex;align-items:center;justify-content:center;color:var(--accent)}
+.locate-ctl a.busy svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.maptoast{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:600;background:var(--ink);color:var(--surface);font-size:13px;padding:8px 14px;border-radius:10px;box-shadow:var(--shadow);max-width:calc(100% - 100px);text-align:center}
+@media (prefers-reduced-motion:reduce){.locate-ctl a.busy svg{animation:none}}

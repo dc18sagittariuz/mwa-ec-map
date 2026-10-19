@@ -80,6 +80,8 @@ function init() {
     markers[c] = L.marker([s.lat, s.lon], { icon: L.divIcon({ className: "mk", html: "", iconSize: [18, 24], iconAnchor: [9, 24], popupAnchor: [0, -22] }) }).addTo(map);
   });
 
+  addLocateControl();
+
   // ค้นหาพื้นที่ + สลับชั้นเขต/สาขา
   const pick = document.getElementById("pick");
   pick.onchange = () => select(pick.value || null, true);
@@ -100,6 +102,69 @@ function init() {
   });
   document.getElementById("mLevels").innerHTML = levelList();
   render();
+}
+
+// ---------- ปุ่มตำแหน่งปัจจุบัน ----------
+// ตำแหน่งใช้ในเบราว์เซอร์เท่านั้น ไม่ได้ส่งไปที่ใด
+let meLayer = null, meLatLng = null;
+const ICON_LOC = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
+function addLocateControl() {
+  const Ctl = L.Control.extend({
+    options: { position: "topleft" },
+    onAdd() {
+      const box = L.DomUtil.create("div", "leaflet-bar locate-ctl");
+      const a = L.DomUtil.create("a", "", box);
+      a.href = "#"; a.title = "ไปยังตำแหน่งปัจจุบัน"; a.setAttribute("role", "button"); a.setAttribute("aria-label", "ไปยังตำแหน่งปัจจุบัน");
+      a.innerHTML = ICON_LOC;
+      L.DomEvent.on(a, "click", e => { L.DomEvent.preventDefault(e); L.DomEvent.stopPropagation(e); locateMe(a); });
+      return box;
+    },
+  });
+  map.addControl(new Ctl());
+}
+function toast(msg) {
+  let t = document.getElementById("maptoast");
+  if (!t) { t = document.createElement("div"); t.id = "maptoast"; t.className = "maptoast"; t.setAttribute("role", "status"); document.querySelector(".mapwrap").appendChild(t); }
+  t.textContent = msg; t.hidden = false; clearTimeout(t._h); t._h = setTimeout(() => { t.hidden = true; }, 5000);
+}
+function inRing(pt, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i], [xj, yj] = ring[j];
+    if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function inGeom(pt, g) {
+  const polys = g.type === "Polygon" ? [g.coordinates] : g.type === "MultiPolygon" ? g.coordinates : [];
+  return polys.some(p => inRing(pt, p[0]) && !p.slice(1).some(h => inRing(pt, h)));
+}
+function areaAt(lat, lon, geo) { const f = geo.features.find(f => inGeom([lon, lat], f.geometry)); return f ? f.properties.code : null; }
+function placeMe() {
+  if (!meLatLng) return;
+  const code = areaAt(meLatLng.lat, meLatLng.lng, curGeo());
+  if (code) { select(code); return true; }
+  return false;
+}
+function locateMe(btn) {
+  if (!navigator.geolocation) { toast("เบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง"); return; }
+  btn.classList.add("busy"); toast("กำลังหาตำแหน่ง…");
+  navigator.geolocation.getCurrentPosition(pos => {
+    btn.classList.remove("busy");
+    const { latitude: la, longitude: lo, accuracy: acc } = pos.coords;
+    meLatLng = L.latLng(la, lo);
+    if (meLayer) map.removeLayer(meLayer);
+    meLayer = L.layerGroup([
+      L.circle(meLatLng, { radius: Math.min(acc, 2000), color: css("--accent"), weight: 1, fillOpacity: .08, interactive: false }),
+      L.circleMarker(meLatLng, { radius: 7, color: "#fff", weight: 3, fillColor: css("--accent"), fillOpacity: 1 }).bindTooltip("ตำแหน่งของคุณ"),
+    ]).addTo(map);
+    const found = placeMe();
+    map.setView(meLatLng, Math.max(map.getZoom(), 13));
+    toast(found ? `คุณอยู่ใน${areaName(areaProps(selected))} · ดูรายละเอียดใต้แผนที่` : "ตำแหน่งของคุณอยู่นอกพื้นที่ที่ระบบครอบคลุม (กรุงเทพฯ นนทบุรี สมุทรปราการ)");
+  }, err => {
+    btn.classList.remove("busy");
+    toast(err.code === 1 ? "ไม่ได้รับอนุญาตให้ใช้ตำแหน่ง · เปิดสิทธิ์ตำแหน่งให้เว็บนี้ในการตั้งค่าเบราว์เซอร์แล้วลองใหม่" : "หาตำแหน่งไม่สำเร็จ ลองใหม่อีกครั้ง");
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
 }
 
 function fillPick() {
@@ -124,7 +189,7 @@ function setMode(m) {
   if (m === mode) return;
   map.removeLayer(curLayer()); mode = m; curLayer().addTo(map);
   try { localStorage.setItem("ecw-mode", m); } catch (e) {}
-  selected = null; fillPick(); setModeButtons(); render();
+  selected = null; fillPick(); setModeButtons(); if (!placeMe()) render();
 }
 
 function levelList() {
