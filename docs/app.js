@@ -73,7 +73,10 @@ function init() {
   brLayer = L.geoJSON(BR, { style: () => ({ weight: 1.5, fillOpacity: .3 }) });
   curLayer().addTo(map);
   map.fitBounds(distLayer.getBounds(), { padding: [10, 10] });
-  [distLayer, brLayer].forEach(g => g.eachLayer(l => l.on("click", () => select(l.feature.properties.code))));
+  [distLayer, brLayer].forEach(g => g.eachLayer(l => l.on("click", () => {
+    const c = l.feature.properties.code;
+    select(selected === c ? null : c, true);   // คลิกครั้งแรก = ซูมเข้า, คลิกซ้ำที่เดิม = ซูมออก + ล้างที่เลือก
+  })));
   [["นนทบุรี", 13.885, 100.43], ["กรุงเทพมหานคร", 13.76, 100.57], ["สมุทรปราการ", 13.585, 100.69]].forEach(([n, la, lo]) =>
     L.tooltip({ permanent: true, direction: "center", className: "plabel", interactive: false }).setLatLng([la, lo]).setContent(n).addTo(map));
   Object.entries(D.stations).forEach(([c, s]) => {
@@ -271,7 +274,7 @@ function renderDetail() {
     <div class="small" style="margin-top:10px">คาดการณ์ (µS/cm)</div>
     <div class="fcrow">${D.horizons.map((h, i) => `<span>${h ? "+" + h : "ตอนนี้"} ${statusLike(d.f[i])}</span>`).join("")}</div>
     <p style="margin:10px 0 0"><button class="link" id="clr">กลับไปภาพรวม</button></p>`;
-  document.getElementById("clr").onclick = () => select(null);
+  document.getElementById("clr").onclick = () => select(null, true);
 }
 const statusLike = v => { const li = lvlOf(v); return `<span class="status" style="background:${li < 0 ? "var(--soft)" : `color-mix(in srgb,${css(LVC[li])} 22%,var(--surface))`};color:var(--ink)">${fmt(v)}</span>`; };
 
@@ -371,7 +374,10 @@ function renderOutlook() {
 
 function select(code, zoom) {
   selected = code; document.getElementById("pick").value = code || "";
-  if (code && zoom) curLayer().eachLayer(l => { if (l.feature.properties.code === code) map.fitBounds(l.getBounds(), { maxZoom: 13, padding: [40, 40] }); });
+  if (zoom) {
+    if (code) curLayer().eachLayer(l => { if (l.feature.properties.code === code) map.flyToBounds(l.getBounds(), { maxZoom: 13, padding: [40, 40], duration: .5 }); });
+    else map.flyToBounds(curLayer().getBounds(), { padding: [10, 10], duration: .5 });
+  }
   render();
 }
 
