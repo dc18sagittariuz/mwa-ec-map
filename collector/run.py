@@ -47,6 +47,9 @@ def main():
     status.setdefault("rwc", {})["rows_added"] = store.append("raw", raw, "id", state)
     status.setdefault("rid", {})["rows_added"] = store.append(
         "flow", [dict(code=k, **v) for k, v in flow.items()], "code", state)
+    # เก็บเฉพาะค่าจนถึงปัจจุบัน (ค่าอนาคตเป็นพยากรณ์ที่เปลี่ยนได้)
+    status.setdefault("tide", {})["rows_added"] = store.append(
+        "tide", [{"t": t, "code": "CPY", "sl": v} for t, v in tide if t <= now], "code", state)
     for k, v in (("twqms", tw), ("rwc", raw)):
         if v:
             status[k]["n"] = len(v)

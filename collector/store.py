@@ -12,6 +12,7 @@ COLS = {
     "twqms": ["t", "code", "ec", "salt", "cl2", "turb", "ph", "temp"],
     "raw": ["t", "id", "river", "km", "ph", "salt", "turb", "tds", "nh4", "do", "temp", "depth", "cond", "wl"],
     "flow": ["t", "code", "q", "dq", "wl"],
+    "tide": ["t", "code", "sl"],   # ระดับน้ำทะเลจากแบบจำลอง Open-Meteo (ปากแม่น้ำเจ้าพระยา) เก็บไว้ fit โมเดลสำแล
 }
 
 
