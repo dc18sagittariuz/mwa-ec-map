@@ -8,7 +8,7 @@ const colorOf = i => i < 0 ? css("--nodata") : css(LVC[i]);
 const fmt = v => v == null ? "–" : Math.round(v).toLocaleString("th-TH");
 const salt = v => (v * RATIO).toFixed(2);
 const SRC = { CP: "เจ้าพระยา", MK: "แม่กลอง" };
-const HOW = { measured: "ค่าวัดจริง", outlet: "คาดจากทางออกโรงผลิต", siphon: "คาดจากไซฟอนรังสิต", samlae: "คาดจากจุดสูบสำแล", persist: "คงค่าล่าสุด", suspect: "ค่าวัดล่าสุดกระโดดผิดปกติ (อาจเป็นเซนเซอร์) จึงใช้ค่ากลาง 24 ชม. แทน", unknown: "ยังคาดการณ์ไม่ได้" };
+const HOW = { measured: "ค่าวัดจริง", outlet: "คาดจากทางออกโรงผลิต", siphon: "คาดจากไซฟอนรังสิต", samlae: "คาดจากจุดสูบสำแล", persist: "คงค่าล่าสุด", suspect: "ค่าวัดล่าสุดกระโดดผิดปกติ (อาจเป็นเซนเซอร์) จึงใช้ค่ากลาง 24 ชม. แทน", flat: "ค่าวัดนิ่งสนิทขณะที่น้ำต้นทางเปลี่ยน (อาจเป็นเซนเซอร์ค้าง) จึงใช้ค่าคาดแทน", unknown: "ยังคาดการณ์ไม่ได้" };
 const PROV = { "10": "กรุงเทพมหานคร", "12": "นนทบุรี", "11": "สมุทรปราการ" };
 const TZ = { timeZone: "Asia/Bangkok" };
 const tTH = (d, o = {}) => d ? new Date(d).toLocaleString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", ...TZ, ...o }) + " น." : "–";
@@ -227,7 +227,7 @@ function stVals() { return Object.entries(D.stations).map(([c, s]) => ({ c, s, v
 
 function renderKPI() {
   // ตอนนี้: นับเฉพาะค่าวัดจริง (สถานีที่ข้อมูลค้างจะได้ค่าประมาณจากต้นทาง ไม่นำมานับ)
-  const vs = stVals().filter(x => hi > 0 || ["measured", "suspect"].includes(x.s.how[0]));
+  const vs = stVals().filter(x => hi > 0 || ["measured", "suspect", "flat"].includes(x.s.how[0]));
   const avg = vs.length ? vs.reduce((a, b) => a + b.v, 0) / vs.length : null;
   const mx = vs.reduce((a, b) => (!a || b.v > a.v ? b : a), null);
   document.getElementById("kN").textContent = vs.length;
@@ -301,7 +301,9 @@ const ICON_PLANT = `<svg class="ic" viewBox="0 0 24 24"><path d="M3 21V9l5 3V9l5
 function renderSrc() {
   const r = D.raw || {}, last = D.horizons.length - 1, rows = [];
   const raw = (n, sub, x) => {
-    const li = lvlOf(x?.cond), d = x && x.cond_24h_ago != null && x.cond != null ? x.cond - x.cond_24h_ago : null;
+    const bad = !!x?.qc;   // ค่าล่าสุดไม่ผ่าน QC (เช่น เซนเซอร์รายงาน 1) → ไม่นำมาคำนวณ
+    const li = bad ? -1 : lvlOf(x?.cond), d = !bad && x && x.cond_24h_ago != null && x.cond != null ? x.cond - x.cond_24h_ago : null;
+    if (bad) sub += " · ค่าล่าสุดผิดปกติ (อาจเป็นเซนเซอร์) ไม่นำมาคำนวณ";
     return `<div class="srcrow">${ICON_RAW}<div class="nm">${n}<small>${sub}</small></div>${statusPill(li)}
       <div class="val">ค่า EC ปัจจุบัน<b>${fmt(x?.cond)} µS/cm</b></div><div class="val">เทียบ 24 ชม. ก่อน<b>${d == null ? "–" : (d >= 0 ? "+" : "") + fmt(d)}</b></div></div>`; };
   rows.push(raw("น้ำดิบ จุดสูบสำแล", "แม่น้ำเจ้าพระยา จ.ปทุมธานี", r.samlae), raw("ไซฟอนรังสิต", "คลองประปา ~7 ชม. หลังสำแล", r.siphon));

@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  issues: write     # health.py เปิด/ปิด issue แจ้งเตือน
 
 concurrency:
   group: collect
@@ -25,7 +26,14 @@ jobs:
           python-version: "3.12"
       - run: pip install requests==2.32.3
       - name: Collect and forecast
+        id: collect
         run: python collector/run.py
+      - name: Health check (open/close alert issues)
+        if: always()
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python collector/health.py collect
       - name: Commit data
         run: |
           git config user.name "ec-collector[bot]"
@@ -35,3 +43,14 @@ jobs:
           git commit -m "data: $(TZ=Asia/Bangkok date '+%Y-%m-%d %H:%M')"
           for i in 1 2 3; do git pull --rebase -q && git push -q && exit 0; sleep 5; done
           exit 1
+      # ตัวเฝ้าระวังภายนอก (ไม่บังคับ): ใส่ URL จาก healthchecks.io ใน Settings → Secrets → Actions ชื่อ HEALTHCHECKS_URL
+      # ถ้าไม่ได้รับสัญญาณตามรอบ healthchecks.io จะส่งอีเมลเตือน — ครอบคลุมกรณี GitHub Actions ล่มทั้งระบบ
+      - name: Ping healthchecks.io
+        if: always()
+        continue-on-error: true
+        env:
+          HC_URL: ${{ secrets.HEALTHCHECKS_URL }}
+          OUTCOME: ${{ steps.collect.outcome }}
+        run: |
+          [ -z "$HC_URL" ] && exit 0
+          if [ "$OUTCOME" = "success" ]; then curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL"; else curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/fail"; fi

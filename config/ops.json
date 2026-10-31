@@ -1,0 +1,11 @@
+{
+  "note": "ค่าที่ใช้ตรวจสุขภาพระบบ (collector/health.py) — เปลี่ยน token_expires ทุกครั้งที่สร้าง token ใหม่ใน cron-job.org",
+  "token_expires": "2027-10-17",
+  "token_warn_days": 30,
+  "primary_max_gap_min": 75,
+  "data_max_age_min": 180,
+  "problem_grace_min": 60,
+  "twqms_min_stations": 50,
+  "twqms_max_age_min": 150,
+  "samlae_max_age_min": 180
+}

@@ -8,6 +8,8 @@
 from datetime import timedelta
 from statistics import median
 
+import qc
+
 HORIZONS = [0, 6, 12, 18, 24, 30, 36, 42, 48]
 SIPHON_FROM_SAMLAE = 7
 VALID_LO, VALID_HI = 100, 20000   # µS/cm ค่าที่เป็นไปได้ของน้ำประปา          # สำแล → ไซฟอนรังสิต (ชม.)
@@ -52,15 +54,15 @@ class Series:
         return a[1] + (b[1] - a[1]) * w
 
 
-def mean_series(series_list):
-    """รวมหลายสถานี (เช่น บางเขน TR1–3) เป็นค่าเฉลี่ยตามเวลา"""
+def mean_series(series_list, how="mean"):
+    """รวมหลายสถานี (เช่น บางเขน TR1–3) เป็นค่าเฉลี่ย (หรือค่ากลาง) ตามเวลา"""
     times = sorted({t for s in series_list for t, _ in s.p})
     pts = []
     for t in times:
         vs = [s.at(t) for s in series_list]
         vs = [v for v in vs if v is not None]
         if vs:
-            pts.append((t, sum(vs) / len(vs)))
+            pts.append((t, median(vs) if how == "median" else sum(vs) / len(vs)))
     return Series(pts)
 
 
@@ -78,20 +80,29 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
     up = cfg["upstream_h"]
 
     # ---------- ชุดข้อมูลต้นทาง ----------
-    tw_series = {}
-    for r in tw_hist:
-        if r["ec"] is not None and VALID_LO <= r["ec"] <= VALID_HI:   # ตัดค่าเซนเซอร์ผิดปกติ (เช่น 0) ออกจากประวัติ
-            tw_series.setdefault(r["code"], []).append((r["t"], r["ec"]))
-    tw_series = {k: Series(v) for k, v in tw_series.items()}
-    raw_series = {}
-    for r in raw_hist:
-        raw_series.setdefault(r["id"], []).append((r["t"], r["cond"]))
-    raw_series = {k: Series(v) for k, v in raw_series.items()}
+    # ตรวจคุณภาพข้อมูลก่อนใช้ (qc.py) — ตัดค่าเป็นไปไม่ได้, จุดโดด, เซนเซอร์ค้าง
+    qc_cut = {}
+
+    def qc_series(rows, key, col, kind):
+        pts = {}
+        for r in rows:
+            pts.setdefault(r[key], []).append((r["t"], r[col]))
+        out = {}
+        for k, p in pts.items():
+            good, bad = qc.clean(p, kind)
+            out[k] = Series(good)
+            if bad:
+                qc_cut[k] = bad
+        return out
+
+    tw_series = qc_series(tw_hist, "code", "ec", "tap")
+    raw_series = qc_series(raw_hist, "id", "cond", "raw")
 
     outlets = {p: mean_series([tw_series[c] for c in v["stations"] if c in tw_series]) for p, v in cfg["plants"].items()}
     samlae, siphon = raw_series.get("S1", Series([])), raw_series.get("S2", Series([]))
     # จุดอ้างอิง = ทางออกโรงผลิตบางเขน (ค่าเฉลี่ย TR1–3) — ทุกสถานีฝั่งเจ้าพระยามีเวลาหน่วง/อัตราส่งต่อเทียบจุดนี้
-    ref = mean_series([tw_series[c] for c in ("SP01", "SP02", "SP03") if c in tw_series])
+    # ใช้ค่ากลางของ 3 จุด (ตรงกับตอน fit ปี 2567) ทนต่อเซนเซอร์เสียตัวเดียวได้ดีกว่าค่าเฉลี่ย
+    ref = mean_series([tw_series[c] for c in ("SP01", "SP02", "SP03") if c in tw_series], how="median")
     rup = cfg.get("ref_upstream_h", {"samlae": up["บางเขน"], "siphon": up["บางเขน"] - SIPHON_FROM_SAMLAE})
     rg = cfg.get("raw_gain", 1.0)   # อัตราส่งต่อ น้ำดิบ → ทางออกโรงผลิต (ต่อจุดวัด)
     if not isinstance(rg, dict):
@@ -127,9 +138,9 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
     for code, meta in NET.items():
         r = live.get(code)
         ec_now = r["ec"] if r else None
-        qc = None
+        qc_flag = None
         if ec_now is not None and not (VALID_LO <= ec_now <= VALID_HI):
-            ec_now, qc = None, "invalid"                       # ค่าเป็นไปไม่ได้ → ถือว่าไม่มีข้อมูล
+            ec_now, qc_flag = None, "invalid"                       # ค่าเป็นไปไม่ได้ → ถือว่าไม่มีข้อมูล
         stale = (r is None) or (newest - r["t"] > timedelta(hours=STALE_H)) or ec_now is None
         plant = meta["plant"]
         # ค่ากระโดดผิดปกติ: ต่างจากค่ากลาง 24 ชม. ของตัวเองมาก ทั้งที่ต้นทางไม่ได้เปลี่ยน → ใช้ค่ากลางแทนและติดป้าย
@@ -142,7 +153,7 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
                 rv_old = ref.at(r["t"] - timedelta(hours=(L0 or 0) + 12)) if ref else None
                 upstream_moved = rv_now is not None and rv_old is not None and abs(rv_now - rv_old) > 100
                 if not upstream_moved:
-                    ec_now, qc = med, "suspect"
+                    ec_now, qc_flag = med, "suspect"
         L, k = meta.get("lag_bk_h"), meta.get("gain", 0.0) or 0.0
         linked = L is not None and k > 0
         # ค่าชดเชยของสถานี: median( EC สถานี − gain × อ้างอิง(t − L) ) ย้อนหลัง
@@ -156,12 +167,24 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
             rv, _ = ref_at(r["t"] - timedelta(hours=L))
             if rv is not None:
                 st_off = ec_now - k * rv
+        # เซนเซอร์ค้าง: ค่าเดิมเป๊ะ 12 ชม. ทั้งที่น้ำต้นทาง (เลื่อนตามเวลาเดินทาง) ขยับเกิน 150 → ไม่เชื่อค่าวัด ใช้ค่าคาดแทน
+        if linked and not stale and ser and ref:
+            win = [(t, v) for t, v in ser.p if r["t"] - timedelta(hours=12) <= t <= r["t"]]
+            if qc.is_flat([v for _, v in win]):
+                rvs = [x for t, _ in win for x in [ref.at(t - timedelta(hours=L))] if x is not None]
+                if len(rvs) >= 6 and max(rvs) - min(rvs) > 150:
+                    rv, _ = ref_at(r["t"] - timedelta(hours=L))
+                    if st_off is not None and rv is not None:
+                        ec_now, qc_flag = st_off + k * rv, "flat"
+                    else:
+                        ec_now, qc_flag, stale = None, "flat", True
+                    qc_cut.setdefault(code, {})["flat_vs_upstream"] = len(win)
 
         fc, how = [], []
         for h in HORIZONS:
             T = now + timedelta(hours=h)
             if h == 0 and not stale:
-                fc.append(round(ec_now, 1)); how.append("suspect" if qc == "suspect" else "measured"); continue
+                fc.append(round(ec_now, 1)); how.append(qc_flag if qc_flag in ("suspect", "flat") else "measured"); continue
             val, src = None, "unknown"
             if linked and st_off is not None:
                 rv, src0 = ref_at(T - timedelta(hours=L))
@@ -176,7 +199,7 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
             "plant": plant, "src": meta["src"], "zone": meta["zone"], "district": meta["district"],
             "ec": ec_now, "salt": (r or {}).get("salt"), "t": r["t"].isoformat() if r else None, "stale": stale,
             "lag_samlae_h": (rup["samlae"] + L) if linked else None, "gain": k, "fit": meta.get("fit"),
-            "f": fc, "how": how, "qc": qc, "ec_raw": (r or {}).get("ec"),
+            "f": fc, "how": how, "qc": qc_flag, "ec_raw": (r or {}).get("ec"),
         }
 
     # ---------- รวมเป็นโซน / เขต ----------
@@ -206,6 +229,7 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
     plants = {p: {"src": v["src"], "f": [agg(v["stations"], i) for i in range(len(HORIZONS))]} for p, v in cfg["plants"].items()}
 
     return {"horizons": HORIZONS, "stations": stations, "zones": zones, "districts": districts, "branches": branches, "plants": plants,
+            "qc": qc_cut,
             "calib": {k: {"offset": round(v[0], 1), "pairs": v[1]} for k, v in cal.items()},
             "series": {
                 "samlae": [[t.isoformat(), round(v, 1)] for t, v in samlae.p if t > now - timedelta(hours=72)],

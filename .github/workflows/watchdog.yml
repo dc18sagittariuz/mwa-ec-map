@@ -1,0 +1,33 @@
+name: watchdog
+
+# ตรวจทุกชั่วโมงว่าระบบยังเก็บข้อมูลอยู่ และตัวตั้งเวลาหลัก (cron-job.org) ยังเรียก
+# ถ้าไม่ใช่ จะเปิด issue (มอบหมายให้เจ้าของ repo → ได้อีเมล) และปิดเองเมื่อกลับมาปกติ
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: watchdog
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests==2.32.3
+      - name: Check freshness
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python collector/health.py watchdog

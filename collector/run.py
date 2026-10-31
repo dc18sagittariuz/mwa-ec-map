@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import sources  # noqa: E402
 import store    # noqa: E402
 import model    # noqa: E402
+import qc       # noqa: E402
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 ICT = sources.ICT
@@ -82,8 +83,13 @@ def main():
         r = next((x for x in raw if x["id"] == i), None)
         if not r:
             return None
-        old = [x for x in raw_hist if x["id"] == i and x.get("cond") is not None and r["t"] - x["t"] >= timedelta(hours=23)]
-        return {"name": r.get("name"), "t": iso(r["t"]), "cond": r.get("cond"), "salt": r.get("salt"),
+        # ธง QC ของค่าล่าสุด (เช่น สำแลรายงาน 1 µS/cm) — ค่าที่ไม่ผ่านไม่ใช้เทียบย้อนหลังด้วย
+        chk = qc.check([(x["t"], x.get("cond")) for x in raw_hist if x["id"] == i], "raw")
+        flag = {t: (f, test) for t, _, f, test in chk}
+        f_now, test_now = flag.get(r["t"], (qc.NOT_EVAL, None))
+        old = [x for x in raw_hist if x["id"] == i and x.get("cond") is not None and r["t"] - x["t"] >= timedelta(hours=23)
+               and flag.get(x["t"], (qc.PASS,))[0] < qc.SUSPECT]
+        return {"qc": test_now if f_now >= qc.SUSPECT else None,"name": r.get("name"), "t": iso(r["t"]), "cond": r.get("cond"), "salt": r.get("salt"),
                 "cond_24h_ago": old[-1]["cond"] if old else None}
 
     out.update({
@@ -99,6 +105,10 @@ def main():
     os.makedirs(os.path.join(ROOT, "docs", "data"), exist_ok=True)
     with open(os.path.join(ROOT, "docs", "data", "latest.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
+    # จดเวลารอบที่ cron-job.org สั่ง (workflow_dispatch) ไว้ให้ health.py ตรวจว่าตัวตั้งเวลาหลักยังทำงาน
+    state["last_run"] = iso(now)
+    if os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch":
+        state["last_dispatch"] = iso(now)
     store.save_state(state)
     print(json.dumps(status, ensure_ascii=False, indent=1))
     # ล้มเหลวเฉพาะเมื่อดึงไม่ได้สักแหล่ง (ให้ Actions แจ้งเตือน)
