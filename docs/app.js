@@ -41,6 +41,45 @@ async function load() {
   ]);
   D = d; DIST = g; BR = b; CUTS = d.levels; NAMES = d.level_names; RATIO = d.salt_per_ec;
   init();
+  fetch("data/verify.json", { cache: "no-store" }).then(x => x.json()).then(v => { V = v; renderVerify(); }).catch(() => {
+    document.getElementById("mVerify").innerHTML = `<p class="small">ยังไม่มีข้อมูล</p>`; });
+}
+
+// ---------- ความแม่นยำจากการใช้งานจริง (collector/verify.py) ----------
+let V = null, vWin = "30d";
+function renderVerify() {
+  const el = document.getElementById("mVerify");
+  if (!V || !V.windows) return;
+  const W = V.windows[vWin], pct = x => x == null ? "–" : Math.round(x * 100) + "%", n1 = x => x == null ? "–" : (x > 0 && x !== Math.abs(x) ? "" : "") + Number(x).toLocaleString("th-TH", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const hs = Object.keys(W.by_h).map(Number).sort((a, b) => a - b);
+  const rows = hs.map(h => { const s = W.by_h[h]; if (!s.n) return "";
+    const better = s.skill != null ? (s.skill > 0.02 ? "ดีกว่า" : s.skill < -0.02 ? "แย่กว่า" : "พอ ๆ กัน") : "–";
+    return `<tr><td>+${h} ชม.</td><td>${n1(s.mae)}</td><td>${s.bias > 0 ? "+" : ""}${n1(s.bias)}</td><td>${n1(s.mae_persist)} <span class="small">(${better})</span></td><td>${s.n_band ? pct(s.coverage) : "–"}</td><td>${s.n_band ? pct(s.above) : "–"}</td><td class="small">${s.n.toLocaleString("th-TH")}</td></tr>`; }).join("");
+  const ev = th => { const e = W.all["ev" + th]; if (!e) return "";
+    return e.obs ? `ที่เกณฑ์ ${th.toLocaleString()}: จับได้ ${pct(e.pod)} ของ สถานี×ชั่วโมง ที่ค่าจริงเกิน (${e.hit}/${e.obs}) · เตือนผิด ${pct(e.far)}`
+      : `ที่เกณฑ์ ${th.toLocaleString()}: ยังไม่มีชั่วโมงที่ค่าจริงเกินในช่วงนี้${e.fc ? ` (แต่ระบบเคยคาดว่าจะเกิน ${e.fc} ครั้ง)` : ""}`; };
+  // กราฟรายวัน: คลาดเฉลี่ยของค่าคาด +12 / +24 / +48 ชม. ตามวันเป้าหมาย
+  const dd = V.daily || [], Wd = 560, Hd = 150, L0 = 36, R0 = 10, T0 = 10, B0 = 26;
+  const keys = [["mae12", css("--accent"), "+12 ชม."], ["mae24", css("--c-ss"), "+24 ชม."], ["mae48", css("--c-tb"), "+48 ชม."]];
+  const vmax = Math.max(5, ...dd.flatMap(d => keys.map(k => d[k[0]] || 0)));
+  const st = [2, 5, 10, 20, 50, 100, 200, 500].find(s => vmax / s <= 4), top = Math.ceil(vmax / st) * st;
+  const x = i => L0 + (dd.length < 2 ? 0 : i / (dd.length - 1)) * (Wd - L0 - R0), y = v => T0 + (1 - v / top) * (Hd - T0 - B0);
+  let g = "";
+  for (let v = 0; v <= top; v += st) g += `<line x1="${L0}" x2="${Wd - R0}" y1="${y(v)}" y2="${y(v)}" stroke="${css("--line")}"/><text x="${L0 - 5}" y="${y(v) + 4}" font-size="10" text-anchor="end" fill="${css("--muted")}">${v}</text>`;
+  const every = Math.max(1, Math.ceil(dd.length / 8));
+  dd.forEach((d, i) => { if (i % every === 0) g += `<text x="${x(i)}" y="${Hd - 8}" font-size="10" text-anchor="middle" fill="${css("--muted")}">${new Date(d.d).toLocaleDateString("th-TH", { day: "numeric", month: "short" })}</text>`; });
+  const lines = keys.map(([k, c]) => { const p = dd.map((d, i) => d[k] == null ? null : [x(i), y(d[k])]); let s = "", pen = false;
+    p.forEach(q => { if (!q) { pen = false; return; } s += (pen ? "L" : "M") + q[0].toFixed(1) + " " + q[1].toFixed(1); pen = true; });
+    return `<path d="${s}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round"/>`; }).join("");
+  const since = new Date(V.since).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+  el.innerHTML = `<p>ระบบเก็บค่าคาดการณ์ที่ออกจริงทุก ${V.every_h} ชม. แล้วเทียบกับค่าที่วัดได้เมื่อถึงเวลา ตั้งแต่ ${since} ออกคาดการณ์ ${V.n_issued.toLocaleString("th-TH")} รอบ ตรวจกับค่าจริงแล้ว ${V.n_matched.toLocaleString("th-TH")} ค่า (อัปเดตทุก ${V.every_h} ชม.)</p>
+    <div class="seg" role="group" aria-label="ช่วงเวลา">${[["7d", "7 วัน"], ["30d", "30 วัน"], ["all", "ทั้งหมด"]].map(([k, t]) => `<button class="${k === vWin ? "on" : ""}" data-w="${k}">${t}</button>`).join("")}</div>
+    <div class="tscroll"><table class="vtab"><thead><tr><th>ล่วงหน้า</th><th>คลาดเฉลี่ย<br><span class="small">µS/cm</span></th><th>คาดสูง(+)/ต่ำ(−)<br><span class="small">เฉลี่ย</span></th><th>ถ้าใช้ค่าปัจจุบัน<br><span class="small">คลาดเฉลี่ย (ระบบดีกว่า/แย่กว่า)</span></th><th>ค่าจริงอยู่ในช่วง<br><span class="small">เป้า ~83%</span></th><th>เกินขอบบน<br><span class="small">เป้า ~6%</span></th><th>จำนวน</th></tr></thead><tbody>${rows || `<tr><td colspan="7" class="small">ยังไม่มีค่าที่ถึงเวลาตรวจในช่วงนี้</td></tr>`}</tbody></table></div>
+    <p class="small" style="margin:8px 0 0">${ev(1200)}<br>${ev(600)}</p>
+    ${dd.length > 1 ? `<svg class="chart" viewBox="0 0 ${Wd} ${Hd}" role="img" aria-label="ความคลาดเคลื่อนเฉลี่ยรายวัน">${g}${lines}</svg>
+    <div class="chart-legend">${keys.map(([, c, t]) => `<span><i style="background:${c}"></i>คลาดเฉลี่ย ${t}</span>`).join("")}</div>` : ""}
+    <p class="small" style="margin:6px 0 0">ช่วงน้ำปกติ ค่าแทบไม่เปลี่ยน การใช้ค่าปัจจุบันเป็นค่าคาดจึงชนะได้ง่าย การทดสอบที่สำคัญจริงคือช่วงน้ำเค็มเข้า ซึ่งตารางนี้จะเริ่มมีตัวเลขที่เกณฑ์ 600 และ 1,200 เมื่อเกิดเหตุการณ์ ช่วงความไม่แน่นอนเริ่มเก็บตั้งแต่ 2 พ.ย. 2569</p>`;
+  el.querySelectorAll(".seg button").forEach(b => b.onclick = () => { vWin = b.dataset.w; renderVerify(); });
 }
 
 const hTime = i => new Date(new Date(D.generated).getTime() + D.horizons[i] * 3600e3);

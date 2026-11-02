@@ -12,6 +12,7 @@ import sources  # noqa: E402
 import store    # noqa: E402
 import model    # noqa: E402
 import qc       # noqa: E402
+import verify   # noqa: E402
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 ICT = sources.ICT
@@ -119,6 +120,12 @@ def main():
     state["last_run"] = iso(now)
     if os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch":
         state["last_dispatch"] = iso(now)
+    # เก็บค่าคาดการณ์ที่ออกจริงทุก ~3 ชม. แล้วสรุปความแม่นยำ (verify.py) — ห้ามทำให้รอบเก็บข้อมูลล้ม
+    try:
+        if verify.archive(out, state) or not os.path.exists(verify.OUT):
+            verify.summarize(now)
+    except Exception:
+        traceback.print_exc()
     store.save_state(state)
     print(json.dumps(status, ensure_ascii=False, indent=1))
     # ล้มเหลวเฉพาะเมื่อดึงไม่ได้สักแหล่ง (ให้ Actions แจ้งเตือน)

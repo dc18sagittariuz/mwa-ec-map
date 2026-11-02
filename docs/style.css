@@ -194,3 +194,11 @@ body.mapmode .grid.mapfull #map{height:calc(100dvh - 150px);min-height:260px}
 .nw{white-space:nowrap}
 
 .advice{margin:10px 0 0;padding:10px 12px;border-radius:10px;font-size:13.5px;line-height:1.55;background:color-mix(in srgb,var(--l4) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--l4) 35%,var(--surface))}
+.seg{display:inline-flex;gap:0;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin:4px 0 8px}
+.seg button{border:0;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;padding:6px 14px;cursor:pointer}
+.seg button.on{background:var(--accent);color:#fff}
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.vtab{border-collapse:collapse;width:100%;min-width:560px;font-size:13.5px}
+.vtab th,.vtab td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.vtab th:first-child,.vtab td:first-child{text-align:left}
+.vtab th{font-weight:600;vertical-align:bottom}
