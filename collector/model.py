@@ -11,6 +11,43 @@ from statistics import median
 import qc
 import samlae_fc
 
+# ---------- ช่วงความไม่แน่นอน (config/intervals.json) ----------
+_IV = None
+_IV_GROUP = {"samlae_fc": "fc"}   # วิธีอื่นที่ส่งต่อจากค่าวัด (outlet/siphon/samlae/persist/...) = "chain"
+
+
+def _iv_table():
+    global _IV
+    if _IV is None:
+        import json
+        import os
+        try:
+            with open(os.path.join(os.path.dirname(__file__), "..", "config", "intervals.json"), encoding="utf-8") as f:
+                _IV = json.load(f)
+        except (OSError, ValueError):
+            _IV = {}
+    return _IV
+
+
+def band(v, how, h, vol):
+    """ช่วง [ล่าง, บน] ของค่าคาด v (ค่าจริงตกในช่วงนี้ ~83% ในการทดสอบย้อนหลังปี 2567)"""
+    if v is None:
+        return None, None
+    T = _iv_table()
+    if h == 0 or how in ("measured", "unknown") or not T:
+        return v, v
+    lb, vb = T["level_bins"], T["vol_bins"]
+    b = "lo" if v < lb[0] else "mid" if v < lb[1] else "hi"
+    w = "mod" if vol is None else "calm" if vol < vb[0] else "mod" if vol < vb[1] else "vol"
+    for g in (_IV_GROUP.get(how, "chain"), "chain"):
+        row = T["table"].get(g, {}).get(b, {}).get(w)
+        if row:
+            hs = sorted(int(k) for k in row)
+            k = min(hs, key=lambda x: (abs(x - h), -x))
+            lo, hi = row[str(k)]
+            return v * lo, v * hi
+    return v, v
+
 HORIZONS = [0, 6, 12, 18, 24, 30, 36, 42, 48]
 SIPHON_FROM_SAMLAE = 7
 VALID_LO, VALID_HI = 100, 20000   # µS/cm ค่าที่เป็นไปได้ของน้ำประปา          # สำแล → ไซฟอนรังสิต (ชม.)
@@ -204,39 +241,53 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw, tide=None):
                 val, src = ec_now, "persist"       # ไม่รับน้ำฝั่งเจ้าพระยา: คงค่าล่าสุด
             fc.append(None if val is None else round(val, 1))
             how.append(src)
+        # ความผันผวน 24 ชม. ของสถานีเอง (สูงสุด − ต่ำสุด)/ค่ากลาง — สูงเมื่อน้ำเค็มเข้า → ช่วงความไม่แน่นอนกว้างขึ้น
+        vol = None
+        if ser and r:
+            w24 = [v for t, v in ser.p if r["t"] - timedelta(hours=24) <= t <= r["t"]]
+            if len(w24) >= 6:
+                vol = (max(w24) - min(w24)) / median(w24)
+        bands = [band(v, how[i], HORIZONS[i], vol) for i, v in enumerate(fc)]
         stations[code] = {
             "name": (r or {}).get("name") or meta["name"], "lat": meta["lat"], "lon": meta["lon"],
             "plant": plant, "src": meta["src"], "zone": meta["zone"], "district": meta["district"],
             "ec": ec_now, "salt": (r or {}).get("salt"), "t": r["t"].isoformat() if r else None, "stale": stale,
             "lag_samlae_h": (rup["samlae"] + L) if linked else None, "gain": k, "fit": meta.get("fit"),
             "f": fc, "how": how, "qc": qc_flag, "ec_raw": (r or {}).get("ec"),
+            "lo": [None if b is None else round(b, 1) for b, _ in bands], "hi": [None if b is None else round(b, 1) for _, b in bands],
         }
 
     # ---------- รวมเป็นโซน / เขต ----------
-    def agg(codes, i):
-        vs = [stations[c]["f"][i] for c in codes if c in stations and stations[c]["f"][i] is not None]
+    def agg(codes, i, key="f"):
+        # ค่าของพื้นที่ = สถานีที่สูงสุด; ขอบล่าง/บนของค่าสูงสุด = ค่าสูงสุดของขอบล่าง/บนแต่ละสถานี
+        vs = [stations[c][key][i] for c in codes if c in stations and stations[c]["f"][i] is not None]
         return max(vs) if vs else None
 
     zones = {}
     for ps, z in cfg["zones"].items():
         codes = z["ps_stations"] + z["stations"]
-        f = []
+        f, lo, hi = [], [], []
         for i in range(len(HORIZONS)):
             # ถ้าสถานีสูบจ่ายของโซนยังไม่ทราบค่า ถือว่าโซนยังไม่ทราบ (กันค่าสูงสุดหลอกจากสถานีปลายสายที่ช้ากว่า)
             ps_known = any(stations[c]["f"][i] is not None for c in z["ps_stations"] if c in stations)
             f.append(agg(codes, i) if ps_known else None)
-        zones[ps] = {"plant": z["plant"], "src": z["src"], "stations": codes, "f": f}
+            lo.append(agg(codes, i, "lo") if ps_known else None)
+            hi.append(agg(codes, i, "hi") if ps_known else None)
+        zones[ps] = {"plant": z["plant"], "src": z["src"], "stations": codes, "f": f, "lo": lo, "hi": hi}
     def area(parts):
         use = [p for p in parts if p[1] >= 0.1]   # โซนที่ครอบคลุมพื้นที่ ≥10%
-        f = []
-        for i in range(len(HORIZONS)):
-            vs = [zones[p[0]]["f"][i] for p in use]
-            f.append(max(vs) if vs and None not in vs else None)
-        return {"parts": parts, "f": f}
+        out = {"parts": parts}
+        for key in ("f", "lo", "hi"):
+            out[key] = []
+            for i in range(len(HORIZONS)):
+                vs = [zones[p[0]][key][i] for p in use]
+                out[key].append(max(vs) if vs and None not in vs else None)
+        return out
 
     districts = {dc: area(parts) for dc, parts in cfg["district_zones"].items()}
     branches = {bc: dict(area(parts), name=cfg["branch_names"][bc]) for bc, parts in cfg.get("branch_zones", {}).items()}
-    plants = {p: {"src": v["src"], "f": [agg(v["stations"], i) for i in range(len(HORIZONS))]} for p, v in cfg["plants"].items()}
+    plants = {p: {"src": v["src"], **{key: [agg(v["stations"], i, key) for i in range(len(HORIZONS))] for key in ("f", "lo", "hi")}}
+              for p, v in cfg["plants"].items()}
 
     return {"horizons": HORIZONS, "stations": stations, "zones": zones, "districts": districts, "branches": branches, "plants": plants,
             "qc": qc_cut,

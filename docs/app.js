@@ -208,12 +208,12 @@ function render() {
     const p = l.feature.properties, v = A[p.code]?.f[hi] ?? null, li = lvlOf(v), sel = selected === p.code;
     l.setStyle({ fillColor: colorOf(li), color: sel ? ink : (br ? css("--accent") : surf), weight: sel ? 3 : (br ? 1.5 : 1), fillOpacity: v == null ? .12 : .34, dashArray: v == null ? "3 3" : null });
     const parts = (A[p.code]?.parts || []).slice(0, 3).map(x => `สถานีสูบจ่าย${x[0]} ${Math.round(x[1] * 100)}%`).join(", ");
-    l.bindTooltip(`<b>${areaName(p)}</b><br>EC ${fmt(v)} µS/cm · ${v == null ? (hi ? "ยังคาดการณ์ไม่ได้" : "ไม่มีข้อมูล") : NAMES[li]}<br><span style="opacity:.75">${parts}</span>`, { sticky: true });
+    l.bindTooltip(`<b>${areaName(p)}</b><br>EC ${fmt(v)}${rangeTxt(A[p.code], hi)} µS/cm · ${v == null ? (hi ? "ยังคาดการณ์ไม่ได้" : "ไม่มีข้อมูล") : NAMES[li]}<br><span style="opacity:.75">${parts}</span>`, { sticky: true });
   });
   Object.entries(D.stations).forEach(([c, s]) => {
     const v = s.f[hi], li = lvlOf(v);
     markers[c].setIcon(L.divIcon({ className: "mk", html: pinSVG(colorOf(li)), iconSize: [18, 24], iconAnchor: [9, 24], popupAnchor: [0, -22] }));
-    markers[c].bindPopup(`<b>${esc(s.name)}</b> <span class="small">${c}</span><br>EC <b>${fmt(v)}</b> µS/cm${v != null ? ` (~${salt(v)} g/L)` : ""}<br><span class="small">${HOW[s.how[hi]]}</span><br>`
+    markers[c].bindPopup(`<b>${esc(s.name)}</b> <span class="small">${c}</span><br>EC <b>${fmt(v)}</b> µS/cm${v != null ? ` (~${salt(v)} g/L)` : ""}${rangeOf(s, hi) ? `<br><span class="small">ช่วงที่น่าจะเป็น ${fmt(s.lo[hi])}–${fmt(s.hi[hi])} µS/cm</span>` : ""}<br><span class="small">${HOW[s.how[hi]]}</span><br>`
       + `รับน้ำจากโรงผลิต${s.plant} (${SRC[s.src]})${s.src === "MK" && s.gain > 0 ? ` · ผสมน้ำจากบางเขน ~${Math.round(s.gain * 100)}%` : ""}${s.lag_samlae_h != null ? `<br>น้ำเดินทางจากสำแล ~${Math.round(s.lag_samlae_h)} ชม.` : ""}<br>`
       + `<span class="small">ค่าวัดล่าสุด ${fmt(s.ec)} เมื่อ ${tTH(s.t, { year: undefined })}${s.stale ? " (ข้อมูลค้าง)" : ""}</span>`);
   });
@@ -269,13 +269,17 @@ function renderDetail() {
   const parts = d.parts.map(x => { const z = D.zones[x[0]]; return `${Math.round(x[1] * 100)}% สถานีสูบจ่าย${x[0]} <span class="small">(โรงผลิต${z.plant} · น้ำดิบ${SRC[z.src]})</span>`; }).join("<br>");
   el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px 18px;align-items:baseline;justify-content:space-between">
       <div><div class="small">${mode === "dist" ? p.pro : "สาขาการประปา (ขอบเขตตามไฟล์ KMZ)"}</div><h2 style="font-family:var(--f-display);font-size:20px;margin:0">${mode === "dist" ? (p.pro === "กรุงเทพมหานคร" ? "เขต" : "อำเภอ") + p.th : "สาขา" + p.name}</h2></div>
-      <div style="display:flex;gap:10px;align-items:baseline"><span class="big" style="color:${colorOf(li)}">${fmt(v)}</span><span class="small">µS/cm</span>${statusPill(li)}</div></div>
+      <div style="display:flex;gap:10px;align-items:baseline"><span class="big" style="color:${colorOf(li)}">${fmt(v)}</span><span class="small">µS/cm${rangeTxt(d, hi, "<br>ช่วง ")}</span>${statusPill(li)}</div></div>
     <dl class="kv"><dt>ความเค็มโดยประมาณ</dt><dd>${v == null ? "–" : "~" + salt(v) + " g/L"}</dd><dt>รับน้ำจาก</dt><dd>${parts}</dd></dl>
     <div class="small" style="margin-top:10px">คาดการณ์ (µS/cm)</div>
-    <div class="fcrow">${D.horizons.map((h, i) => `<span>${h ? "+" + h : "ตอนนี้"} ${statusLike(d.f[i])}</span>`).join("")}</div>
+    <div class="fcrow">${D.horizons.map((h, i) => `<span>${h ? "+" + h : "ตอนนี้"} ${statusLike(d.f[i])}${rangeOf(d, i) ? `<small class="rng">${fmt(d.lo[i])}–${fmt(d.hi[i])}</small>` : ""}</span>`).join("")}</div>
+    <p class="small" style="margin:6px 0 0">ตัวเลขเล็กใต้ค่าคาดการณ์ = ช่วงที่ค่าจริงน่าจะอยู่ (ทดสอบย้อนหลังปี 2567 ค่าจริงตกในช่วงนี้ราว 8 ใน 10 ครั้ง)</p>
     <p style="margin:10px 0 0"><button class="link" id="clr">กลับไปภาพรวม</button></p>`;
   document.getElementById("clr").onclick = () => select(null, true);
 }
+// ช่วงที่ค่าจริงน่าจะอยู่ (config/intervals.json: ทดสอบย้อนหลังปี 2567 ครอบคลุมค่าจริง ~83%)
+const rangeOf = (o, i) => o && o.lo && o.hi && o.lo[i] != null && o.hi[i] != null && Math.round(o.hi[i]) - Math.round(o.lo[i]) >= 2 ? [o.lo[i], o.hi[i]] : null;
+const rangeTxt = (o, i, pre = " ") => { const r = rangeOf(o, i); return r ? `${pre}(${fmt(r[0])}–${fmt(r[1])})` : ""; };
 const statusLike = v => { const li = lvlOf(v); return `<span class="status" style="background:${li < 0 ? "var(--soft)" : `color-mix(in srgb,${css(LVC[li])} 22%,var(--surface))`};color:var(--ink)">${fmt(v)}</span>`; };
 
 function renderProv() {
@@ -290,11 +294,12 @@ function renderProv() {
 }
 
 // ช่วงคาดการณ์ไกลสุดที่ทราบ (น้ำที่จะถึงต้องผ่านจุดวัดต้นทางแล้ว เช่น บางเขนรู้ล่วงหน้าได้ ~17 ชม. จากสำแล)
-function farCell(f) {
+function farCell(p) {
+  const f = p.f;
   let i = f.length - 1;
   while (i > 0 && f[i] == null) i--;
   if (i === 0) return `<div class="val">คาดการณ์<b>ยังไม่ทราบ</b></div>`;
-  return `<div class="val">คาดการณ์ (+${D.horizons[i]} ชม.)<b>${fmt(f[i])} µS/cm</b></div>`;
+  return `<div class="val">คาดการณ์ (+${D.horizons[i]} ชม.)<b>${fmt(f[i])} µS/cm</b>${rangeTxt(p, i, "<small>ช่วง ")}${rangeOf(p, i) ? "</small>" : ""}</div>`;
 }
 const ICON_RAW = `<svg class="ic" viewBox="0 0 24 32"><path d="M12 1C9 7 3 13.5 3 20a9 9 0 0 0 18 0C21 13.5 15 7 12 1Z"/></svg>`;
 const ICON_PLANT = `<svg class="ic" viewBox="0 0 24 24"><path d="M3 21V9l5 3V9l5 3V5h4l1 16H3Z"/></svg>`;
@@ -309,7 +314,7 @@ function renderSrc() {
   rows.push(raw("น้ำดิบ จุดสูบสำแล", "แม่น้ำเจ้าพระยา จ.ปทุมธานี", r.samlae), raw("ไซฟอนรังสิต", "คลองประปา ~7 ชม. หลังสำแล", r.siphon));
   Object.entries(D.plants).forEach(([n, p]) => {
     rows.push(`<div class="srcrow">${ICON_PLANT}<div class="nm">โรงผลิตน้ำ${n}<small>น้ำดิบ${SRC[p.src]}</small></div>${statusPill(lvlOf(p.f[0]))}
-      <div class="val">ค่า EC ปัจจุบัน<b>${fmt(p.f[0])} µS/cm</b></div>${farCell(p.f)}</div>`);
+      <div class="val">ค่า EC ปัจจุบัน<b>${fmt(p.f[0])} µS/cm</b></div>${farCell(p)}</div>`);
   });
   document.getElementById("srcBox").innerHTML = rows.join("");
 }
@@ -320,16 +325,17 @@ function renderTrend() {
   const S = D.series || {};
   const ts = p => (p || []).map(q => [new Date(q[0]).getTime(), q[1]]).filter(q => q[0] >= t0);
   const fc = f => D.horizons.map((h, i) => f && f[i] != null ? [now + h * 3600e3, f[i]] : null).filter(Boolean);
+  const bd = o => D.horizons.map((h, i) => rangeOf(o, i) ? [now + h * 3600e3, o.lo[i], o.hi[i]] : null).filter(Boolean);
   // โรงผลิตฝั่งเจ้าพระยา: เส้นทึบ = ค่าวัดย้อนหลัง, เส้นประ = คาดการณ์
   const PL = [
-    { n: "บางเขน", c: css("--accent"), h: ts(S.bangkhen_out), f: fc(D.plants["บางเขน"]?.f) },
-    { n: "สามเสน", c: css("--c-ss"), h: ts(S.samsen_out), f: fc(D.plants["สามเสน"]?.f) },
-    { n: "ธนบุรี", c: css("--c-tb"), h: ts(S.thonburi_out), f: fc(D.plants["ธนบุรี"]?.f) },
+    { n: "บางเขน", c: css("--accent"), h: ts(S.bangkhen_out), f: fc(D.plants["บางเขน"]?.f), b: bd(D.plants["บางเขน"]) },
+    { n: "สามเสน", c: css("--c-ss"), h: ts(S.samsen_out), f: fc(D.plants["สามเสน"]?.f), b: bd(D.plants["สามเสน"]) },
+    { n: "ธนบุรี", c: css("--c-tb"), h: ts(S.thonburi_out), f: fc(D.plants["ธนบุรี"]?.f), b: bd(D.plants["ธนบุรี"]) },
   ];
   const raw = ts(S.samlae), rawF = (S.samlae_fc || []).map(q => [new Date(q[0]).getTime(), q[1]]).filter(q => q[0] <= now + 48 * 3600e3);
   const SA = selected ? AREA()[selected] : null;
-  const selF = SA ? fc(SA.f) : [];
-  const pts = [...raw, ...rawF, ...selF, ...PL.flatMap(p => [...p.h, ...p.f])];
+  const selF = SA ? fc(SA.f) : [], selB = SA ? bd(SA) : [];
+  const pts = [...raw, ...rawF, ...selF, ...selB.map(q => [q[0], q[2]]), ...PL.flatMap(p => [...p.h, ...p.f, ...p.b.map(q => [q[0], q[2]])])];
   const vals = pts.map(p => p[1]);
   const vmax = Math.max(300, ...vals), vmin = Math.min(...vals, vmax);
   const step = [25, 50, 100, 200, 250, 500, 1000].find(st => (vmax - vmin + 40) / st <= 5) || 1000;
@@ -338,6 +344,8 @@ function renderTrend() {
   const nT = Math.round((hiV - lo) / step);
   const x = t => L0 + (t - t0) / (t1 - t0) * (W - L0 - R0), y = v => T0 + (1 - (v - lo) / (hiV - lo)) * (H - T0 - B0);
   const line = (p, col, dash, wd = 2) => p.length > 1 ? `<path d="${p.map((q, i) => (i ? "L" : "M") + x(q[0]).toFixed(1) + " " + y(q[1]).toFixed(1)).join(" ")}" fill="none" stroke="${col}" stroke-width="${wd}" ${dash ? 'stroke-dasharray="5 4"' : ""} stroke-linejoin="round"/>` : "";
+  // แถบจาง = ช่วงที่ค่าจริงน่าจะอยู่
+  const area = (b, col, op = .13) => b.length > 1 ? `<path d="${b.map((q, i) => (i ? "L" : "M") + x(q[0]).toFixed(1) + " " + y(q[2]).toFixed(1)).join(" ")} ${b.slice().reverse().map(q => "L" + x(q[0]).toFixed(1) + " " + y(q[1]).toFixed(1)).join(" ")} Z" fill="${col}" opacity="${op}" stroke="none"/>` : "";
   const dots = (p, col) => p.map(q => `<circle cx="${x(q[0]).toFixed(1)}" cy="${y(q[1]).toFixed(1)}" r="3" fill="${css("--surface")}" stroke="${col}" stroke-width="2"/>`).join("");
   const mut = css("--muted"), grid = css("--line"), acc2 = css("--accent-2"), warn = css("--l2");
   let g = "";
@@ -349,6 +357,7 @@ function renderTrend() {
     <rect x="${nowX}" y="${T0}" width="${W - R0 - nowX}" height="${H - T0 - B0}" fill="${css("--soft")}"/>${g}${wy}
     <line x1="${nowX}" x2="${nowX}" y1="${T0}" y2="${H - B0}" stroke="${mut}" stroke-width="1"/>
     ${line(raw, acc2, false, 1.5)}${rawF.length && raw.length ? line([raw[raw.length - 1], ...rawF], acc2, true, 1.5) : ""}
+    ${selB.length ? area(selB, css("--l3"), .16) : PL.map(p => area(p.b, p.c, .09)).join("")}
     ${PL.map(p => line(p.h, p.c, false) + line(p.f, p.c, true) + dots(p.f, p.c)).join("")}
     ${selF.length ? line(selF, css("--l3"), false, 2.5) + dots(selF, css("--l3")) : ""}
     <line x1="${hx}" x2="${hx}" y1="${T0}" y2="${H - B0}" stroke="${css("--ink")}" stroke-width="1.5" opacity=".6"/>
@@ -359,7 +368,7 @@ function renderTrend() {
     ${PL.map(p => `<span><i style="background:${p.c}"></i>โรงผลิต${p.n}</span>`).join("")}
     ${selected ? `<span><i style="background:${css("--l3")}"></i>${areaName(areaProps(selected))}</span>` : ""}
     ${wy ? `<span><i style="background:${warn}"></i>ระดับเฝ้าระวัง</span>` : ""}</div>
-    <p class="small" style="margin:4px 0 0">เส้นทึบ = ค่าวัดย้อนหลัง · เส้นประและจุด = คาดการณ์ · บางเขนคาดได้ไกลสุด ~17 ชม. ส่วนสามเสนและธนบุรีได้ถึง 48 ชม. เพราะน้ำเดินทางจากสำแลนานกว่า</p>
+    <p class="small" style="margin:4px 0 0">เส้นทึบ = ค่าวัดย้อนหลัง · เส้นประและจุด = คาดการณ์ · แถบจาง = ช่วงที่ค่าจริงน่าจะอยู่ (ราว 8 ใน 10 ครั้ง) · บางเขนเกิน ~17 ชม. และสามเสน/ธนบุรีเกิน ~48 ชม. ใช้ค่าพยากรณ์น้ำดิบสำแล จึงมีช่วงกว้างกว่า</p>
     ${enough ? "" : `<p class="small" style="margin:6px 0 0">ระบบเริ่มเก็บข้อมูลเมื่อ 17 ต.ค. 2569 เส้นย้อนหลังจะครบเมื่อสะสมข้อมูลได้ 2 วัน</p>`}`;
 }
 
