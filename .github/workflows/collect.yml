@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "7,37 * * * *"   # ทุก 30 นาที (เลี่ยงนาทีที่ 0 ซึ่งคิวแน่น)
   workflow_dispatch:
+    inputs:
+      force_report:
+        description: "สร้างรายงานผู้บริหารรอบนี้เลย (ไม่รอ 07:00)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -34,6 +39,26 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: python collector/health.py collect
+      # รายงานผู้บริหารรายวัน: รอบแรกหลัง 07:00 น. (cron-job.org เรียกตรง :00 จึงพร้อมราว 07:03)
+      # รูป/PDF ขึ้นไว้ที่ Release "daily-report" — ลิงก์ถาวร .../releases/download/daily-report/ec-report-latest.png
+      - name: Daily report (07:00)
+        if: steps.collect.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE_REPORT: ${{ inputs.force_report && '1' || '' }}
+        run: |
+          python collector/daily_report.py check || { echo "not due"; exit 0; }
+          pip install -q playwright==1.48.0
+          python -m playwright install --with-deps chromium > /dev/null
+          python collector/daily_report.py render report-out
+          gh release view daily-report > /dev/null 2>&1 || gh release create daily-report --title "รายงานผู้บริหารรายวัน" --latest=false \
+            --notes "รูปและ PDF รายงานความเค็มน้ำประปา สร้างอัตโนมัติทุกวันราว 07:00 น. — ec-report-latest.png / .pdf คือฉบับล่าสุด เก็บฉบับรายวันย้อนหลัง 30 วัน"
+          gh release upload daily-report report-out/* --clobber
+          cutoff=$(TZ=Asia/Bangkok date -d '30 days ago' +%F)
+          gh release view daily-report --json assets --jq '.assets[].name' | grep -E '^ec-report-[0-9]{4}-' | while read n; do
+            d=$(echo "$n" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}'); [[ "$d" < "$cutoff" ]] && gh release delete-asset daily-report "$n" -y || true
+          done || true
       - name: Commit data
         run: |
           git config user.name "ec-collector[bot]"
