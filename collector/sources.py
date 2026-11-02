@@ -15,7 +15,7 @@ RWC_URL = "http://rwc.mwa.co.th/page/home/table.php"
 RWC_HOME = "http://rwc.mwa.co.th/page/home/"
 RID_URL = "https://bigdata-swoc.rid.go.th/api/ma/pier/all/get_pier_data"
 TIDE_URL = ("https://marine-api.open-meteo.com/v1/marine?latitude=13.40&longitude=100.55"
-            "&hourly=sea_level_height_msl&past_days=7&forecast_days=3&timeformat=unixtime&timezone=GMT")
+            "&hourly=sea_level_height_msl&past_days=7&forecast_days=4&timeformat=unixtime&timezone=GMT")
 
 # ค่าใน TWQMS: valueN
 TW_PARAMS = {"turb": 1, "cl2": 2, "ph": 4, "ec": 5, "temp": 6, "salt": 9}

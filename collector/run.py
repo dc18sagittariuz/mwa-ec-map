@@ -79,8 +79,14 @@ def main():
         for r in raw:
             r["river"] = r.get("river") or ""
 
-    out = model.build(cfg, now, tw_hist, raw_hist, tw, raw)
+    out = model.build(cfg, now, tw_hist, raw_hist, tw, raw, tide)
     out["outlook"] = model.outlook(now, flow, flow_hist, tide, raw)
+    sfc = out["series"].get("samlae_fc") or []
+    if sfc:
+        pk = max(sfc, key=lambda x: x[1])
+        out["outlook"]["samlae_peak"] = {"t": pk[0], "cond": pk[1], "how": pk[2]}
+        if pk[2] == "model":
+            out["outlook"]["why"].append(f"คาดว่าน้ำดิบสำแลสูงสุด ~{pk[1]:.0f} µS/cm ใน 48 ชม.")
 
     def rawpick(i):
         r = next((x for x in raw if x["id"] == i), None)

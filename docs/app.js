@@ -8,7 +8,7 @@ const colorOf = i => i < 0 ? css("--nodata") : css(LVC[i]);
 const fmt = v => v == null ? "–" : Math.round(v).toLocaleString("th-TH");
 const salt = v => (v * RATIO).toFixed(2);
 const SRC = { CP: "เจ้าพระยา", MK: "แม่กลอง" };
-const HOW = { measured: "ค่าวัดจริง", outlet: "คาดจากทางออกโรงผลิต", siphon: "คาดจากไซฟอนรังสิต", samlae: "คาดจากจุดสูบสำแล", persist: "คงค่าล่าสุด", suspect: "ค่าวัดล่าสุดกระโดดผิดปกติ (อาจเป็นเซนเซอร์) จึงใช้ค่ากลาง 24 ชม. แทน", flat: "ค่าวัดนิ่งสนิทขณะที่น้ำต้นทางเปลี่ยน (อาจเป็นเซนเซอร์ค้าง) จึงใช้ค่าคาดแทน", unknown: "ยังคาดการณ์ไม่ได้" };
+const HOW = { measured: "ค่าวัดจริง", outlet: "คาดจากทางออกโรงผลิต", siphon: "คาดจากไซฟอนรังสิต", samlae: "คาดจากจุดสูบสำแล", samlae_fc: "คาดจากค่าพยากรณ์น้ำดิบสำแล (น้ำขึ้นน้ำลง) ความเชื่อมั่นต่ำกว่าค่าที่ส่งต่อจากค่าวัด", persist: "คงค่าล่าสุด", suspect: "ค่าวัดล่าสุดกระโดดผิดปกติ (อาจเป็นเซนเซอร์) จึงใช้ค่ากลาง 24 ชม. แทน", flat: "ค่าวัดนิ่งสนิทขณะที่น้ำต้นทางเปลี่ยน (อาจเป็นเซนเซอร์ค้าง) จึงใช้ค่าคาดแทน", unknown: "ยังคาดการณ์ไม่ได้" };
 const PROV = { "10": "กรุงเทพมหานคร", "12": "นนทบุรี", "11": "สมุทรปราการ" };
 const TZ = { timeZone: "Asia/Bangkok" };
 const tTH = (d, o = {}) => d ? new Date(d).toLocaleString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", ...TZ, ...o }) + " น." : "–";
@@ -326,10 +326,10 @@ function renderTrend() {
     { n: "สามเสน", c: css("--c-ss"), h: ts(S.samsen_out), f: fc(D.plants["สามเสน"]?.f) },
     { n: "ธนบุรี", c: css("--c-tb"), h: ts(S.thonburi_out), f: fc(D.plants["ธนบุรี"]?.f) },
   ];
-  const raw = ts(S.samlae);
+  const raw = ts(S.samlae), rawF = (S.samlae_fc || []).map(q => [new Date(q[0]).getTime(), q[1]]).filter(q => q[0] <= now + 48 * 3600e3);
   const SA = selected ? AREA()[selected] : null;
   const selF = SA ? fc(SA.f) : [];
-  const pts = [...raw, ...selF, ...PL.flatMap(p => [...p.h, ...p.f])];
+  const pts = [...raw, ...rawF, ...selF, ...PL.flatMap(p => [...p.h, ...p.f])];
   const vals = pts.map(p => p[1]);
   const vmax = Math.max(300, ...vals), vmin = Math.min(...vals, vmax);
   const step = [25, 50, 100, 200, 250, 500, 1000].find(st => (vmax - vmin + 40) / st <= 5) || 1000;
@@ -348,7 +348,7 @@ function renderTrend() {
   const svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="กราฟ EC ย้อนหลังและคาดการณ์ของโรงผลิตน้ำ">
     <rect x="${nowX}" y="${T0}" width="${W - R0 - nowX}" height="${H - T0 - B0}" fill="${css("--soft")}"/>${g}${wy}
     <line x1="${nowX}" x2="${nowX}" y1="${T0}" y2="${H - B0}" stroke="${mut}" stroke-width="1"/>
-    ${line(raw, acc2, false, 1.5)}
+    ${line(raw, acc2, false, 1.5)}${rawF.length && raw.length ? line([raw[raw.length - 1], ...rawF], acc2, true, 1.5) : ""}
     ${PL.map(p => line(p.h, p.c, false) + line(p.f, p.c, true) + dots(p.f, p.c)).join("")}
     ${selF.length ? line(selF, css("--l3"), false, 2.5) + dots(selF, css("--l3")) : ""}
     <line x1="${hx}" x2="${hx}" y1="${T0}" y2="${H - B0}" stroke="${css("--ink")}" stroke-width="1.5" opacity=".6"/>

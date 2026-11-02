@@ -9,6 +9,7 @@ from datetime import timedelta
 from statistics import median
 
 import qc
+import samlae_fc
 
 HORIZONS = [0, 6, 12, 18, 24, 30, 36, 42, 48]
 SIPHON_FROM_SAMLAE = 7
@@ -75,7 +76,7 @@ def level(ec, cuts):
     return len(cuts)
 
 
-def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
+def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw, tide=None):
     NET = cfg["stations"]
     up = cfg["upstream_h"]
 
@@ -119,8 +120,17 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
         return (median(diffs), len(diffs)) if len(diffs) >= 6 else ((1 - g) * 330.0, len(diffs))
 
     cal = {"samlae": raw_offset(samlae, rup["samlae"], rg["samlae"]), "siphon": raw_offset(siphon, rup["siphon"], rg["siphon"])}
-    # ค่าที่จุดอ้างอิง ณ เวลา t: ใช้ค่าวัดจริงก่อน ถ้ายังไม่ถึงให้ส่งต่อจากไซฟอน/สำแล
-    REF_CANDS = [("outlet", ref, 0, 0.0, 1.0), ("siphon", siphon, rup["siphon"], cal["siphon"][0], rg["siphon"]), ("samlae", samlae, rup["samlae"], cal["samlae"][0], rg["samlae"])]
+    # พยากรณ์น้ำดิบสำแล 1–48 ชม. (samlae_fc.py) → ต่อการคาดการณ์ที่บางเขนจาก ~17 ชม. ไปถึง 48 ชม.
+    try:
+        _, sfc = samlae_fc.forecast(samlae.p, tide or [])
+    except Exception as e:   # ห้ามทำให้ทั้งรอบล้ม
+        print("samlae_fc error:", e)
+        sfc = []
+    samlae_f = Series([(t, v) for t, v, _ in sfc])
+    # ค่าที่จุดอ้างอิง ณ เวลา t: ใช้ค่าวัดจริงก่อน ถ้ายังไม่ถึงให้ส่งต่อจากไซฟอน/สำแล แล้วจึงใช้ค่าพยากรณ์สำแล
+    REF_CANDS = [("outlet", ref, 0, 0.0, 1.0), ("siphon", siphon, rup["siphon"], cal["siphon"][0], rg["siphon"]),
+                 ("samlae", samlae, rup["samlae"], cal["samlae"][0], rg["samlae"]),
+                 ("samlae_fc", samlae_f, rup["samlae"], cal["samlae"][0], rg["samlae"])]
 
     def ref_at(t):
         for name, ser, lag, off, gain in REF_CANDS:
@@ -233,6 +243,7 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw):
             "calib": {k: {"offset": round(v[0], 1), "pairs": v[1]} for k, v in cal.items()},
             "series": {
                 "samlae": [[t.isoformat(), round(v, 1)] for t, v in samlae.p if t > now - timedelta(hours=72)],
+                "samlae_fc": [[t.isoformat(), round(v, 1), m] for t, v, m in sfc],
                 "siphon": [[t.isoformat(), round(v, 1)] for t, v in siphon.p if t > now - timedelta(hours=72)],
                 "bangkhen_out": [[t.isoformat(), round(v, 1)] for t, v in outlets["บางเขน"].p if t > now - timedelta(hours=72)],
                 "samsen_out": [[t.isoformat(), round(v, 1)] for t, v in outlets["สามเสน"].p if t > now - timedelta(hours=72)],
