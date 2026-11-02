@@ -192,3 +192,5 @@ body.mapmode .grid.mapfull #map{height:calc(100dvh - 150px);min-height:260px}
 @media (prefers-reduced-motion:reduce){.locate-ctl a.busy svg{animation:none}}
 
 .nw{white-space:nowrap}
+
+.advice{margin:10px 0 0;padding:10px 12px;border-radius:10px;font-size:13.5px;line-height:1.55;background:color-mix(in srgb,var(--l4) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--l4) 35%,var(--surface))}
