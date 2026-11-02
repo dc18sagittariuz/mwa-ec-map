@@ -80,11 +80,15 @@ h2 span{font-family:var(--f-body);font-weight:400;font-size:12px;color:var(--mut
 
 @media print{
   @page{size:A4;margin:0}
-  body{background:#fff}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}   /* พิมพ์สีพื้นหลังแม้ไม่ได้ติ๊ก "พิมพ์พื้นหลัง" */
+  html,body{background:#fff;height:297mm;overflow:hidden}        /* กันหน้าว่างหน้าที่ 2 */
   .tools{display:none}
-  .stage{padding:0}
+  .stage{padding:0;display:block}
   .fit{transform:none!important;width:auto!important;height:auto!important;overflow:visible}
-  .sheet{box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  /* เบราว์เซอร์ (เช่น Safari) มักเพิ่มหัว/ท้ายกระดาษ ทำให้พื้นที่พิมพ์เตี้ยกว่า A4 → ย่อ 92% ให้พอดี 1 หน้าเสมอ
+     รูป/PDF อัตโนมัติ 07:00 ใช้ขนาดเต็ม (daily_report.py ตั้ง .full-bleed) */
+  .sheet{box-shadow:none;zoom:.92;margin:0 auto;break-inside:avoid;page-break-inside:avoid}
+  html.full-bleed .sheet{zoom:1}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>

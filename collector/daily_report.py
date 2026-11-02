@@ -63,6 +63,7 @@ def render(outdir):
             pg.locator("#sheet").screenshot(path=png)
             pdf = os.path.join(outdir, f"ec-report-{day}.pdf")
             pg.emulate_media(media="print")
+            pg.evaluate("document.documentElement.classList.add('full-bleed')")
             pg.pdf(path=pdf, format="A4", print_background=True, margin={"top": "0", "bottom": "0", "left": "0", "right": "0"},
                    prefer_css_page_size=True)
             b.close()
