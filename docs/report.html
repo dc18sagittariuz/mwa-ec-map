@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>รายงานความเค็มน้ำประปา</title>
+<meta name="description" content="รายงานสรุป 1 หน้าสำหรับผู้บริหาร: สถานการณ์ความเค็มน้ำประปาปัจจุบันและคาดการณ์ 48 ชั่วโมง">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ink:#132b45; --muted:#5f7590; --line:#dbe5ef; --paper:#ffffff; --desk:#e7eef6; --accent:#1b6fd8;
+  --l0:#22a884; --l1:#9fc73b; --l2:#f2b12c; --l3:#ea7134; --l4:#c8304a; --nodata:#c3cfdb;
+  --f-display:"Prompt","IBM Plex Sans Thai",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans Thai",system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--desk);color:var(--ink);font-family:var(--f-body);font-size:12.5px;line-height:1.5;-webkit-text-size-adjust:100%}
+.tools{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;padding:10px 16px;background:rgba(231,238,246,.92);backdrop-filter:blur(6px)}
+.tools button,.tools a{font:inherit;font-size:14px;border:1px solid #c5d4e4;background:#fff;color:var(--ink);border-radius:8px;padding:8px 14px;cursor:pointer;text-decoration:none}
+.tools button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.tools button:focus-visible,.tools a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tools .msg{font-size:12.5px;color:var(--muted);width:100%;text-align:center}
+.stage{padding:8px 16px 32px;display:flex;justify-content:center}
+.fit{transform-origin:top left;overflow:hidden}
+
+/* ---- แผ่น A4: 210×297 มม. = 794×1123 px ที่ 96 dpi ---- */
+.sheet{width:794px;height:1123px;background:var(--paper);box-shadow:0 2px 16px rgba(19,43,69,.12);display:flex;flex-direction:column;overflow:hidden;position:relative}
+.band{--lv:var(--l0);background:var(--lv);color:#fff;padding:22px 36px 20px;position:relative}
+.band.dark-ink{color:var(--ink)}
+.band-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:12.5px;opacity:.95}
+.band-top b{font-family:var(--f-display);font-weight:700;font-size:15px;letter-spacing:.01em}
+.verdict{font-family:var(--f-display);font-weight:700;font-size:29px;line-height:1.22;margin:12px 0 6px;text-wrap:balance;max-width:680px}
+.sub{font-size:14px;line-height:1.5;margin:0;max-width:680px;opacity:.97}
+.demo{position:absolute;right:36px;bottom:-11px;background:#132b45;color:#fff;font-size:11px;padding:3px 10px;border-radius:4px;font-weight:600}
+
+.body{padding:16px 36px 0;display:flex;flex-direction:column;gap:12px;flex:1;min-height:0}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line);padding-bottom:12px}
+.fact{padding:0 14px;border-left:1px solid var(--line)}
+.fact:first-child{padding-left:0;border-left:0}
+.fact .k{color:var(--muted);font-size:12px}
+.fact .v{font-family:var(--f-display);font-weight:600;font-size:22px;line-height:1.2;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:7px}
+.fact .v small{font-family:var(--f-body);font-weight:400;font-size:11.5px;color:var(--muted)}
+.fact .n{font-size:11.5px;color:var(--muted);margin-top:2px}
+.dot{width:11px;height:11px;border-radius:50%;flex:none;display:inline-block}
+
+h2{font-family:var(--f-display);font-weight:600;font-size:15px;margin:0 0 8px;color:var(--ink)}
+h2 span{font-family:var(--f-body);font-weight:400;font-size:12px;color:var(--muted);margin-left:6px}
+.two{display:grid;grid-template-columns:300px 1fr;gap:22px}
+.map svg{width:100%;height:auto;display:block}
+.map .cap{font-size:11px;color:var(--muted);margin-top:2px}
+.watch{width:100%;border-collapse:collapse;font-size:12.5px}
+.watch td,.watch th{padding:3.5px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.watch th{font-weight:500;color:var(--muted);font-size:11.5px}
+.watch td:first-child,.watch th:first-child{text-align:left;padding-left:0;white-space:normal}
+.watch td:first-child small{color:var(--muted)}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600;color:var(--ink)}
+
+.strip table{width:100%;border-collapse:separate;border-spacing:3px 3px;margin:0 -3px;font-variant-numeric:tabular-nums}
+.strip th{font-weight:500;font-size:11px;color:var(--muted);text-align:center;line-height:1.25}
+.strip th:first-child{text-align:left}
+.strip td{text-align:center;font-size:12px;font-weight:600;padding:3px 0;border-radius:4px}
+.strip td.rl{text-align:left;font-weight:500;padding-left:0;white-space:nowrap;font-size:12.5px}
+.strip td.na{color:var(--muted);font-weight:400;background:#f2f5f9}
+.strip .cap{font-size:11px;color:var(--muted);margin-top:4px}
+
+.text{display:grid;grid-template-columns:1.35fr 1fr;gap:24px}
+.text p{margin:0 0 5px;font-size:12.5px;line-height:1.55}
+.text ul{margin:0;padding-left:18px;font-size:12.5px;line-height:1.5}
+.text li{margin:0 0 4px}
+
+.foot{margin-top:auto;padding:10px 36px 14px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);display:grid;grid-template-columns:1fr auto;gap:5px 18px;align-items:end}
+.foot .legend{grid-column:1/-1}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--ink)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend small{color:var(--muted)}
+.foot .url{font-weight:600;color:var(--accent);text-align:right}
+
+@media print{
+  @page{size:A4;margin:0}
+  body{background:#fff}
+  .tools{display:none}
+  .stage{padding:0}
+  .fit{transform:none!important;width:auto!important;height:auto!important;overflow:visible}
+  .sheet{box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="tools" role="toolbar" aria-label="ส่งออกรายงาน">
+  <button class="primary" id="btnShare" type="button">ส่งเป็นรูป (LINE)</button>
+  <button id="btnPng" type="button">บันทึกรูป PNG</button>
+  <button id="btnPrint" type="button">พิมพ์ / บันทึก PDF</button>
+  <a href="./">กลับหน้าหลัก</a>
+  <div class="msg" id="msg" aria-live="polite"></div>
+</div>
+<div class="stage"><div class="fit" id="fit"><div class="sheet" id="sheet"><p style="padding:40px">กำลังโหลดข้อมูล…</p></div></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+"use strict";
+const LV = ["--l0", "--l1", "--l2", "--l3", "--l4"];
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt = v => v == null ? "–" : Math.round(v).toLocaleString("th-TH");
+const thDate = (t, o = {}) => new Date(t).toLocaleString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", ...o });
+const thTime = t => { const d = new Date(t); return `${d.toLocaleDateString("th-TH", { weekday: "long" })} ${d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })} น.`; };
+const hhmm = t => new Date(t).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+let D, G, V, CUTS, NAMES;
+const lvl = v => { if (v == null) return -1; let i = 0; while (i < CUTS.length && v >= CUTS[i]) i++; return i; };
+const col = i => i < 0 ? css("--nodata") : css(LV[i]);
+// ผสมสีกับขาวเอง (html2canvas ไม่รองรับ color-mix)
+const tint = (i, a = 22) => { if (i < 0) return "#f2f5f9"; const h = col(i).replace("#", ""), n = parseInt(h, 16);
+  const m = c => Math.round(c * a / 100 + 255 * (1 - a / 100)); return `rgb(${m(n >> 16)},${m((n >> 8) & 255)},${m(n & 255)})`; };
+const clOf = v => { const f = D.chloride_fit; return f && v != null ? Math.max(0, f.a + f.b * v) : null; };
+const areaName = c => { const p = (G.features.find(f => f.properties.code === c) || {}).properties; return p ? (p.pro === "กรุงเทพมหานคร" ? "เขต" : "อ.") + p.th : c; };
+const proOf = c => ((G.features.find(f => f.properties.code === c) || {}).properties || {}).pro || "";
+const maxOf = a => { let m = null, i = -1; (a || []).forEach((v, k) => { if (v != null && (m == null || v > m)) { m = v; i = k; } }); return [m, i]; };
+
+async function load() {
+  const demo = new URLSearchParams(location.search).get("demo");
+  const [d, g, v] = await Promise.all([
+    fetch(demo ? `data/${demo}.json` : "data/latest.json", { cache: "no-store" }).then(x => x.json()),
+    fetch("data/districts.json").then(x => x.json()),
+    fetch("data/verify.json", { cache: "no-store" }).then(x => x.json()).catch(() => null),
+  ]);
+  D = d; G = g; V = v; CUTS = d.levels; NAMES = d.level_names;
+  render(); fit();
+}
+
+function analyse() {
+  const H = D.horizons, now = new Date(D.generated).getTime();
+  const rows = Object.entries(D.districts).map(([c, a]) => {
+    const [m, i] = maxOf(a.f);
+    return { c, now: a.f[0], max: m, at: i, hi: i >= 0 && a.hi ? a.hi[i] : null, l: lvl(m), lnow: lvl(a.f[0]) };
+  }).filter(r => r.max != null);
+  rows.sort((a, b) => b.max - a.max);
+  const worst = rows[0] || { max: null, l: -1 };
+  const worstNow = rows.reduce((m, r) => r.now != null && (m == null || r.now > m.now) ? r : m, null);
+  const count = th => rows.filter(r => r.max >= th).length;
+  const countNow = th => rows.filter(r => r.now != null && r.now >= th).length;
+  // เวลาแรกที่มีพื้นที่ใดถึงเกณฑ์
+  const first = th => { for (let i = 0; i < H.length; i++) if (rows.some(r => (D.districts[r.c].f[i] ?? -1) >= th)) return { i, t: now + H[i] * 3600e3 }; return null; };
+  const known = H.map((h, i) => rows.filter(r => D.districts[r.c].f[i] != null).length);
+  return { rows, worst, worstNow, count, countNow, first, known, total: Object.keys(D.districts).length, now };
+}
+
+function verdict(A) {
+  const c12 = A.count(CUTS[3]), c9 = A.count(CUTS[2]), c6 = A.count(CUTS[1]);
+  const n12 = A.countNow(CUTS[3]), n9 = A.countNow(CUTS[2]);
+  const f12 = A.first(CUTS[3]), f9 = A.first(CUTS[2]);
+  const ol = (D.outlook || {}).level;
+  let head, sub, act = [];
+  if (n12) {
+    head = [`น้ำประปา ${n12} พื้นที่`, "มีคลอไรด์เกินเกณฑ์แล้ว"];
+    sub = `EC สูงสุดตอนนี้ ${fmt(A.worstNow.now)} µS/cm ที่${areaName(A.worstNow.c)} (คลอไรด์ราว ${fmt(Math.round(clOf(A.worstNow.now) / 10) * 10)} มก./ล.) ภายใน 48 ชม. คาดว่าจะมี ${c12} พื้นที่ที่เกินเกณฑ์`;
+    act = ["แจ้งกลุ่มเสี่ยงในพื้นที่ที่เกินเกณฑ์ให้เลี่ยงดื่มน้ำประปาช่วงนี้ (ผู้ป่วยโรคไต หัวใจ ความดันโลหิตสูง เบาหวาน ผู้สูงอายุ เด็กเล็ก)",
+      "ประชาสัมพันธ์ช่วงเวลาที่ค่าต่ำกว่าเกณฑ์ เพื่อให้ประชาชนสำรองน้ำ", "เตรียมจุดบริการน้ำดื่มในพื้นที่ที่เกินเกณฑ์ต่อเนื่อง"];
+  } else if (c12) {
+    head = [`คาดว่า ${c12} พื้นที่`, "จะมีคลอไรด์เกินเกณฑ์", `ตั้งแต่ราว${thTime(f12.t)}`];
+    sub = `ตอนนี้ยังต่ำกว่าเกณฑ์ทุกพื้นที่ (สูงสุด ${fmt(A.worstNow?.now)} µS/cm) แต่ความเค็มกำลังมาตามเส้นทางน้ำ คาดว่าจะสูงสุดราว ${fmt(A.worst.max)} µS/cm ที่${areaName(A.worst.c)}`;
+    act = ["แจ้งเตือนกลุ่มเสี่ยงล่วงหน้าในพื้นที่ที่คาดว่าจะเกินเกณฑ์ และแนะนำให้สำรองน้ำก่อนเวลาดังกล่าว",
+      "เตรียมข้อความประชาสัมพันธ์และจุดบริการน้ำดื่ม", "ติดตามรายงานรอบถัดไป ค่าคาดการณ์ระยะเกิน 24 ชม. ยังเปลี่ยนได้มาก"];
+  } else if (c9 || n9) {
+    head = ["เฝ้าระวัง:", `${c9} พื้นที่คาดว่า`, "จะเข้าใกล้เกณฑ์คลอไรด์", "ภายใน 48 ชม."];
+    sub = `ค่าสูงสุดที่คาดคือ ${fmt(A.worst.max)} µS/cm ที่${areaName(A.worst.c)}${f9 ? ` ตั้งแต่ราว${thTime(f9.t)}` : ""} ยังต่ำกว่าเกณฑ์ 250 มก./ล. แต่ขอบบนของช่วงคาดการณ์ถึง ${fmt(A.worst.hi)} µS/cm`;
+    act = ["เตรียมข้อความแจ้งเตือนกลุ่มเสี่ยงไว้ล่วงหน้า", "ติดตามค่าน้ำดิบที่สำแลและปริมาณน้ำจากเขื่อนทุกรอบรายงาน"];
+  } else if (c6) {
+    head = ["ค่าความเค็มเริ่มสูงขึ้น", `ใน ${c6} พื้นที่`, "แต่ยังห่างจากเกณฑ์"];
+    sub = `ค่าสูงสุดใน 48 ชม. คาดว่าราว ${fmt(A.worst.max)} µS/cm (คลอไรด์ราว ${fmt(Math.round(clOf(A.worst.max) / 10) * 10)} มก./ล. เกณฑ์ 250) น้ำยังดื่มได้ตามปกติ`;
+    act = ["ยังไม่ต้องดำเนินการ", "ติดตามแนวโน้มน้ำดิบที่สำแล หากสูงขึ้นต่อเนื่องให้เตรียมแผนสื่อสาร"];
+  } else {
+    head = ["น้ำประปาปกติทุกพื้นที่", "และคาดว่าจะปกติต่อเนื่อง", "อีก 48 ชั่วโมง"];
+    sub = `ค่าความนำไฟฟ้าสูงสุด ${fmt(A.worstNow?.now)} µS/cm (คลอไรด์ต่ำ ไม่เกิน ~90 มก./ล.) ห่างจากเกณฑ์ 1,200 µS/cm มาก`;
+    act = ["ไม่ต้องดำเนินการเพิ่ม"];
+    if (ol >= 1) act.push("แนวโน้ม 2–3 วันจากน้ำในเขื่อนและน้ำขึ้นน้ำลงอยู่ในระดับเฝ้าระวัง ให้ติดตามรายงานรอบถัดไป");
+    else act.push("ติดตามรายงานรอบถัดไปตามปกติ");
+  }
+  return { head: Array.isArray(head) ? head : [head], sub, act };
+}
+// ภาษาไทยไม่มีช่องว่างระหว่างคำ — ห่อแต่ละวลีไม่ให้ตัดกลาง เพื่อให้พาดหัวขึ้นบรรทัดใหม่ตรงจุดที่อ่านเป็นธรรมชาติ
+const phrases = a => a.map(x => `<span style="white-space:nowrap">${x}</span>`).join(" ");
+
+function narrative(A) {
+  const s = (D.raw || {}).samlae || {}, q = ((D.flow || {})["C.13"] || {}).q, o = D.outlook || {};
+  const out = [];
+  if (s.cond != null) {
+    const d = s.cond_24h_ago != null ? s.cond - s.cond_24h_ago : null;
+    const trend = d == null ? "" : Math.abs(d) < 20 ? " ทรงตัวจากเมื่อวาน" : d > 0 ? ` เพิ่มขึ้น ${fmt(d)} จากเมื่อวาน` : ` ลดลง ${fmt(-d)} จากเมื่อวาน`;
+    const pk = o.samlae_peak;
+    out.push(`น้ำดิบที่จุดสูบสำแลวัดได้ ${fmt(s.cond)} µS/cm${trend}${pk && pk.how === "model" ? ` แบบจำลองน้ำขึ้นน้ำลงคาดว่าจะสูงสุดราว ${fmt(pk.cond)} µS/cm ภายใน 48 ชม.` : ""}`);
+  }
+  const why = [];
+  if (q != null) why.push(`น้ำจากเขื่อนเจ้าพระยา ${fmt(q)} ลบ.ม./วินาที${q < 80 ? " (ต่ำมาก น้ำทะเลรุกได้ง่าย)" : q < 150 ? " (ต่ำ ควรเฝ้าระวัง)" : ""}`);
+  if (o.spring_tide) why.push("อยู่ในช่วงน้ำเกิด ซึ่งน้ำทะเลหนุนสูง");
+  if (o.front) why.push(`แนวน้ำเค็มอยู่ห่างจุดสูบสำแลราว ${fmt(o.front.dist_km)} กม.`);
+  const ln = ["ความเสี่ยงต่ำ", "เฝ้าระวัง", "ความเสี่ยงสูง"][o.level];
+  if (why.length || ln) out.push(`ปัจจัยต้นทาง: ${why.join(" ")}${why.length ? " " : ""}${ln ? `แนวโน้ม 2–3 วันอยู่ในระดับ${ln}` : ""}`);
+  const k48 = A.known[A.known.length - 1];
+  out.push(`ค่าคาดการณ์ระยะเกิน 24 ชม. ใช้แบบจำลองน้ำดิบ จึงคลาดได้มากกว่า ทดสอบกับปี 2567 จับชั่วโมงที่เกินเกณฑ์ได้ 84% ที่ล่วงหน้า 12 ชม. และ 43% ที่ 48 ชม.${k48 < A.total ? ` (ที่ +48 ชม. คาดได้ ${k48} จาก ${A.total} พื้นที่)` : ""}`);
+  return out;
+}
+
+function mapSVG(A) {
+  const W = 300, Hh = 192, by = Object.fromEntries(A.rows.map(r => [r.c, r]));
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  const rings = f => f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+  G.features.forEach(f => rings(f).forEach(p => p[0].forEach(([x, y]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); })));
+  const k = Math.cos((y0 + y1) / 2 * Math.PI / 180), sx = (W - 4) / ((x1 - x0) * k), sy = (Hh - 4) / (y1 - y0), s = Math.min(sx, sy);
+  const ox = (W - (x1 - x0) * k * s) / 2, oy = (Hh - (y1 - y0) * s) / 2;
+  const P = ([x, y]) => (ox + (x - x0) * k * s).toFixed(1) + " " + (oy + (y1 - y) * s).toFixed(1);
+  const paths = G.features.map(f => { const r = by[f.properties.code], i = r ? r.l : -1;
+    const d = rings(f).map(p => p.map(ring => "M" + ring.map(P).join("L") + "Z").join("")).join("");
+    return `<path d="${d}" fill="${i < 0 ? "#eef2f6" : col(i)}" fill-opacity="${i < 0 ? 1 : .85}" stroke="#fff" stroke-width=".8"/>`; }).join("");
+  return `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="แผนที่ระดับสูงสุดที่คาดใน 48 ชั่วโมงรายเขต/อำเภอ">${paths}</svg>`;
+}
+
+function render() {
+  const A = analyse(), Vd = verdict(A);
+  const worstL = Math.max(A.worst.l, lvl(A.worstNow?.now));
+  const lightBand = worstL === 1 || worstL === 2;   // สีเหลือง/เขียวอ่อน ใช้ตัวอักษรสีเข้มให้อ่านได้
+  const H = D.horizons, now = A.now;
+  // ---- ตัวเลขหลัก ----
+  const s = (D.raw || {}).samlae || {}, q = ((D.flow || {})["C.13"] || {}).q;
+  const fact = (k, v, unit, i, n) => `<div class="fact"><div class="k">${k}</div><div class="v">${i != null ? `<span class="dot" style="background:${col(i)}"></span>` : ""}${v}${unit ? `<small>${unit}</small>` : ""}</div><div class="n">${n}</div></div>`;
+  const facts = [
+    fact("สูงสุดตอนนี้", fmt(A.worstNow?.now), "µS/cm", lvl(A.worstNow?.now), A.worstNow ? areaName(A.worstNow.c) : "–"),
+    fact("สูงสุดใน 48 ชม.", fmt(A.worst.max), "µS/cm", A.worst.l, A.worst.c ? `${areaName(A.worst.c)} · ${A.worst.at > 0 ? "+" + H[A.worst.at] + " ชม." : "ตอนนี้"}` : "–"),
+    fact("พื้นที่ที่คาดว่าเกินเกณฑ์", `${A.count(CUTS[3])}`, `จาก ${A.total}`, A.count(CUTS[3]) ? 4 : 0, `ใกล้เกณฑ์ ${A.count(CUTS[2]) - A.count(CUTS[3])} พื้นที่`),
+    fact("น้ำดิบสำแล", fmt(s.cond), "µS/cm", lvl(s.cond), q != null ? `น้ำจากเขื่อน ${fmt(q)} ลบ.ม./วิ` : ""),
+  ].join("");
+  // ---- พื้นที่ที่ต้องจับตา ----
+  const top = A.rows.slice(0, 6).map(r => `<tr><td>${areaName(r.c)} <small>${proOf(r.c) === "กรุงเทพมหานคร" ? "" : proOf(r.c)}</small></td><td>${fmt(r.now)}</td><td><b>${fmt(r.max)}</b></td><td>${r.at > 0 ? "+" + H[r.at] + " ชม." : "ตอนนี้"}</td><td><span class="pill" style="background:${tint(r.l, 30)}">${NAMES[r.l] || "–"}</span></td></tr>`).join("");
+  // ---- ตาราง 48 ชม. ----
+  const fc = (D.series || {}).samlae_fc || [];
+  const sam = H.map((h, i) => { if (i === 0) return s.cond ?? null; const T = now + h * 3600e3; let best = null, bd = 1e12;
+    fc.forEach(p => { const dd = Math.abs(new Date(p[0]).getTime() - T); if (dd < bd) { bd = dd; best = p[1]; } }); return bd <= 2 * 3600e3 ? best : null; });
+  const plants = [["น้ำดิบสำแล", sam], ...["บางเขน", "สามเสน", "ธนบุรี", "มหาสวัสดิ์"].filter(p => D.plants[p]).map(p => ["โรงผลิต" + p, D.plants[p].f])];
+  const head = `<tr><th>จุดวัด</th>${H.map((h, i) => `<th>${i ? "+" + h + " ชม." : "ตอนนี้"}<br>${hhmm(now + h * 3600e3)}</th>`).join("")}</tr>`;
+  const body = plants.map(([n, f]) => `<tr><td class="rl">${n}</td>${H.map((h, i) => { const v = f[i], li = lvl(v);
+    return v == null ? `<td class="na">–</td>` : `<td style="background:${tint(li, li >= 3 ? 70 : 34)};${li >= 3 ? "color:#fff" : ""}">${fmt(v)}</td>`; }).join("")}</tr>`).join("");
+  // ---- ความแม่นยำ ----
+  const v24 = V && V.windows && V.windows["30d"] && V.windows["30d"].by_h["24"];
+  const acc = v24 && v24.n ? `ผลจริง 30 วันล่าสุด: ค่าคาด +24 ชม. คลาดเฉลี่ย ${v24.mae} µS/cm` : "";
+  const legend = NAMES.map((n, i) => { const lo = i ? CUTS[i - 1] : 0, hi = CUTS[i];
+    return `<span><i class="dot" style="background:${col(i)}"></i>${n} <small>${hi == null ? "≥" + fmt(lo) : fmt(lo) + "–" + fmt(hi)}</small></span>`; }).join("");
+
+  document.getElementById("sheet").innerHTML = `
+    <header class="band${lightBand ? " dark-ink" : ""}" style="--lv:${col(Math.max(worstL, 0))}">
+      ${D.demo ? `<div class="demo">ตัวอย่างจากข้อมูลจริง พ.ค. 2567</div>` : ""}
+      <div class="band-top"><b>EC Watch</b><span>รายงานสถานการณ์ความเค็มน้ำประปา · ข้อมูล ณ ${thDate(D.generated)} น.</span></div>
+      <h1 class="verdict">${phrases(Vd.head)}</h1>
+      <p class="sub">${Vd.sub}</p>
+    </header>
+    <div class="body">
+      <section class="facts" aria-label="ตัวเลขหลัก">${facts}</section>
+      <section class="two">
+        <div class="map"><h2>ระดับสูงสุดใน 48 ชม.<span>รายเขต/อำเภอ</span></h2>${mapSVG(A)}<div class="cap">สีเทา = ยังคาดการณ์ไม่ได้ · กทม. นนทบุรี สมุทรปราการ</div></div>
+        <div><h2>พื้นที่ที่ต้องจับตา<span>เรียงตามค่าสูงสุดที่คาดใน 48 ชม. (µS/cm)</span></h2>
+          <table class="watch"><thead><tr><th>พื้นที่</th><th>ตอนนี้</th><th>สูงสุด</th><th>เมื่อ</th><th>ระดับ</th></tr></thead><tbody>${top}</tbody></table></div>
+      </section>
+      <section class="strip"><h2>น้ำดิบและโรงผลิตน้ำ 48 ชม. ข้างหน้า<span>EC µS/cm</span></h2>
+        <table><thead>${head}</thead><tbody>${body}</tbody></table>
+        <div class="cap">น้ำจากสำแลถึงบางเขนราว 17 ชม. · สามเสน/ธนบุรีราว 2 วัน · มหาสวัสดิ์ใช้น้ำดิบแม่กลอง ไม่ค่อยได้รับผล</div></section>
+      <section class="text">
+        <div><h2>สรุปสถานการณ์</h2>${narrative(A).map(p => `<p>${p}</p>`).join("")}</div>
+        <div><h2>ข้อเสนอ</h2><ul>${Vd.act.map(a => `<li>${a}</li>`).join("")}</ul></div>
+      </section>
+    </div>
+    <footer class="foot">
+      <div class="legend">${legend}</div>
+      <div>เกณฑ์ "เกินเกณฑ์" = EC 1,200 µS/cm ≈ คลอไรด์ 250 มก./ล. (กรมอนามัย 2563 / WHO) · ข้อมูล: กปน. (TWQMS, rwc), กรมชลประทาน, Open-Meteo${acc ? " · " + acc : ""}</div>
+      <div class="url">dc18sagittariuz.github.io/mwa-ec-map</div>
+    </footer>`;
+  document.title = `รายงานความเค็มน้ำประปา ${new Date(D.generated).toLocaleDateString("th-TH", { day: "numeric", month: "short" })}`;
+}
+
+// ---- ย่อแผ่น A4 ให้พอดีจอ (มือถือ) ----
+function fit() {
+  const f = document.getElementById("fit"), s = Math.min(1, (window.innerWidth - 32) / 794);
+  f.style.transform = s < 1 ? `scale(${s})` : "none";
+  f.style.width = 794 * s + "px"; f.style.height = 1123 * s + "px";
+}
+window.addEventListener("resize", fit);
+
+// ---- ส่งออก ----
+const msg = t => document.getElementById("msg").textContent = t;
+async function toBlob() {
+  if (!window.html2canvas) throw new Error("โหลดเครื่องมือสร้างรูปไม่สำเร็จ ลองรีเฟรชหน้า หรือใช้ปุ่มพิมพ์ / บันทึก PDF แทน");
+  await document.fonts.ready;
+  const f = document.getElementById("fit"), keep = [f.style.transform, f.style.width, f.style.height];
+  f.style.transform = "none"; f.style.width = "794px"; f.style.height = "1123px";
+  try {
+    const c = await html2canvas(document.getElementById("sheet"), { scale: 2, backgroundColor: "#ffffff", useCORS: true, windowWidth: 900 });
+    return await new Promise(r => c.toBlob(r, "image/png"));
+  } finally { [f.style.transform, f.style.width, f.style.height] = keep; }
+}
+const fname = () => `ec-report-${new Date(D.generated).toISOString().slice(0, 16).replace(/[:T]/g, "")}.png`;
+function download(b) { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = fname(); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+document.getElementById("btnPng").onclick = async () => { try { msg("กำลังสร้างรูป…"); download(await toBlob()); msg("บันทึกรูปแล้ว"); } catch (e) { msg(e.message); } };
+document.getElementById("btnShare").onclick = async () => {
+  try {
+    msg("กำลังสร้างรูป…");
+    const b = await toBlob(), file = new File([b], fname(), { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: document.title }); msg(""); }
+    else { download(b); msg("อุปกรณ์นี้ส่งต่อตรงไม่ได้ บันทึกรูปไว้แล้ว ให้แนบรูปใน LINE"); }
+  } catch (e) { msg(e.name === "AbortError" ? "" : e.message); }
+};
+document.getElementById("btnPrint").onclick = () => window.print();
+
+load().catch(e => { document.getElementById("sheet").innerHTML = `<p style="padding:40px">โหลดข้อมูลไม่สำเร็จ (${e.message}) ลองรีเฟรชหน้าอีกครั้ง</p>`; });
+</script>
+</body>
+</html>

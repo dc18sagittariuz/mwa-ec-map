@@ -120,6 +120,7 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw, tide=None):
     # ---------- ชุดข้อมูลต้นทาง ----------
     # ตรวจคุณภาพข้อมูลก่อนใช้ (qc.py) — ตัดค่าเป็นไปไม่ได้, จุดโดด, เซนเซอร์ค้าง
     qc_cut = {}
+    qc_rejected = {}   # {สถานี: {เวลา: ชื่อการทดสอบ}} — ใช้ตัดค่าล่าสุดที่ไม่ผ่าน QC (เช่น เซนเซอร์ค้างที่ 2,000)
 
     def qc_series(rows, key, col, kind):
         pts = {}
@@ -127,7 +128,13 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw, tide=None):
             pts.setdefault(r[key], []).append((r["t"], r[col]))
         out = {}
         for k, p in pts.items():
-            good, bad = qc.clean(p, kind)
+            good, bad = [], {}
+            for t, v, f, test in qc.check(p, kind):
+                if f < qc.SUSPECT:
+                    good.append((t, v))
+                else:
+                    bad[test] = bad.get(test, 0) + 1
+                    qc_rejected.setdefault(k, {})[t] = test
             out[k] = Series(good)
             if bad:
                 qc_cut[k] = bad
@@ -188,6 +195,8 @@ def build(cfg, now, tw_hist, raw_hist, latest_tw, latest_raw, tide=None):
         qc_flag = None
         if ec_now is not None and not (VALID_LO <= ec_now <= VALID_HI):
             ec_now, qc_flag = None, "invalid"                       # ค่าเป็นไปไม่ได้ → ถือว่าไม่มีข้อมูล
+        elif r is not None and r["t"] in qc_rejected.get(code, {}) and qc_rejected[code][r["t"]] != "rate_last":
+            ec_now, qc_flag = None, qc_rejected[code][r["t"]]      # ไม่ผ่าน QC ของประวัติ (spike / ค้างระดับสูง) → ไม่มีข้อมูล
         stale = (r is None) or (newest - r["t"] > timedelta(hours=STALE_H)) or ec_now is None
         plant = meta["plant"]
         # ค่ากระโดดผิดปกติ: ต่างจากค่ากลาง 24 ชม. ของตัวเองมาก ทั้งที่ต้นทางไม่ได้เปลี่ยน → ใช้ค่ากลางแทนและติดป้าย
