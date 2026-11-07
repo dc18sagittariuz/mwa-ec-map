@@ -1,0 +1,11 @@
+scheme,level,color,ec_min_uScm,ec_max_uScm,raw_salinity_min_gL,raw_salinity_max_gL,tap_chloride_min_mgL,tap_chloride_max_mgL,meaning
+crisis_2559,1,green,,400,,0.20,,20,ปกติ
+crisis_2559,2,blue,400,500,0.20,0.25,20,50,
+crisis_2559,3,yellow,500,700,0.25,0.34,50,110,
+crisis_2559,4,orange,700,1200,0.34,0.60,110,250,
+crisis_2559,5,red,1200,,0.60,,250,,
+prapa_chuan_ru_2559,1,green,,700,,0.34,,,ไม่กร่อย — ปกติ
+prapa_chuan_ru_2559,2,yellow,700,1200,0.34,0.50,,,เริ่มกร่อย — เฝ้าระวังและควรสำรองน้ำ
+prapa_chuan_ru_2559,3,red,1200,2000,0.50,1.00,,,กร่อยเล็กน้อย — น้ำประปามีรสชาติกร่อย
+prapa_chuan_ru_2559,4,red,2000,2300,1.00,1.20,,,กร่อยปานกลาง
+prapa_chuan_ru_2559,5,red,2300,,1.20,,,,กร่อยมาก
