@@ -111,7 +111,7 @@ def main():
                                for r in raw if r.get("river") == "chao_phraya" and r.get("km") is not None],
                               key=lambda x: x["km"]),
         "levels": cfg["levels"], "level_names": cfg["level_names"], "salt_per_ec": cfg["salt_per_ec"],
-        "chloride_fit": {k: cfg["chloride_fit"][k] for k in ("a", "b", "sd")},
+        "chloride_fit": {k: v for k, v in cfg["chloride_fit"].items() if k != "note"}, "level_chloride": cfg.get("level_chloride"),
     })
     os.makedirs(os.path.join(ROOT, "docs", "data"), exist_ok=True)
     with open(os.path.join(ROOT, "docs", "data", "latest.json"), "w", encoding="utf-8") as f:

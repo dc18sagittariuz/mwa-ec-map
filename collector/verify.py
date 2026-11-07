@@ -8,7 +8,7 @@
   MAE, bias            ความคลาดเฉลี่ย / คาดสูง(+) หรือต่ำ(−) กว่าจริง
   skill                1 − MAE/MAE(ใช้ค่าปัจจุบันเป็นค่าคาด) — >0 = ดีกว่าวิธีง่ายที่สุด
   coverage, above      ค่าจริงตกในช่วงความไม่แน่นอน / สูงกว่าขอบบน (เป้า ~83% / ~6% จากการทดสอบปี 2567)
-  POD, FAR             จับเหตุการณ์ได้ / เตือนผิด ที่เกณฑ์ 600 และ 1,200 µS/cm (นับเป็น สถานี×ชั่วโมงเป้าหมาย)
+  POD, FAR             จับเหตุการณ์ได้ / เตือนผิด ที่เกณฑ์ 700 และ 1,200 µS/cm (นับเป็น สถานี×ชั่วโมงเป้าหมาย)
 
 ใช้:  python collector/verify.py            สรุปอย่างเดียว
       python collector/verify.py backfill   ดึงค่าคาดการณ์ย้อนหลังจาก git history ของ latest.json
@@ -31,7 +31,7 @@ FC_DIR = os.path.join(ROOT, "data", "forecasts")
 OUT = os.path.join(ROOT, "docs", "data", "verify.json")
 COLS = ["issued", "code", "h", "f", "lo", "hi", "how", "ec0"]
 EVERY_H = 3
-EVENTS = (600, 1200)
+EVENTS = (700, 1200)   # เริ่มกร่อย / เกินเกณฑ์ (เกณฑ์ กปน. 2559)
 GROUP = {"samlae_fc": "fc", "persist": "persist"}   # อื่น ๆ = ส่งต่อจากค่าวัด ("chain")
 
 

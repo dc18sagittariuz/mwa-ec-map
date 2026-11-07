@@ -7,9 +7,15 @@ const lvlOf = ec => { if (ec == null) return -1; let i = 0; while (i < CUTS.leng
 const colorOf = i => i < 0 ? css("--nodata") : css(LVC[i]);
 const fmt = v => v == null ? "–" : Math.round(v).toLocaleString("th-TH");
 const salt = v => (v * RATIO).toFixed(2);
-// คลอไรด์โดยประมาณจาก EC (ผลแล็บ พ.ค. 2567, r 0.98) — แม่นพอเฉพาะ EC ≥ 600; เกณฑ์ 250 มก./ล. ≈ EC 1,200
+// คลอไรด์/โซเดียมโดยประมาณจาก EC — แสดงคลอไรด์เป็นช่วงระหว่างสองสูตร: ผลแล็บ พ.ค. 2567 (a,b) และตาราง กปน. 2562 (ta,tb)
+// EC < 500 ใช้ช่วงคลอไรด์ตามระดับเตือนภัย กปน. 2559 เพราะสูตรเส้นตรงไม่แม่นที่ค่าต่ำ
+const r10 = x => Math.round(x / 10) * 10;
 const clOf = v => { const f = D.chloride_fit; return f && v != null ? Math.max(0, f.a + f.b * v) : null; };
-const clTxt = v => { const c = clOf(v); return c == null ? "–" : v < 600 ? "ต่ำ (ไม่เกิน ~90 มก./ล.)" : `~${Math.round(c / 10) * 10} มก./ล.${c > 250 ? " (เกินเกณฑ์ 250)" : ""}`; };
+const clRange = v => { const f = D.chloride_fit; if (!f || v == null) return null; const a = f.a + f.b * v, b = f.ta != null ? f.ta + f.tb * v : a; return [Math.max(0, Math.min(a, b)), Math.max(a, b)]; };
+const clTxt = v => { if (v == null || !D.chloride_fit) return "–"; if (v < 400) return "ต่ำ (ไม่เกิน ~20 มก./ล.)"; if (v < 500) return "~20–50 มก./ล.";
+  const [lo, hi] = clRange(v); return `~${r10(lo)}${r10(hi) > r10(lo) ? "–" + r10(hi) : ""} มก./ล.${lo > 250 ? " (เกินเกณฑ์ 250)" : hi > 250 ? " (อาจเกินเกณฑ์ 250)" : ""}`; };
+const naTxt = v => { const f = D.chloride_fit; if (v == null || !f || f.na_a == null) return "–"; if (v < 500) return "ต่ำ (ไม่เกิน ~40 มก./ล.)";
+  const n = f.na_a + f.na_b * v; return `~${r10(n)} มก./ล.${n > 200 ? " (เกินค่าแนะนำ WHO 200)" : ""}`; };
 const ADVICE = `คลอไรด์น่าจะเกิน 250 มก./ล. น้ำมีรสกร่อย คนสุขภาพดียังดื่มได้ แต่ กปน. แนะนำให้กลุ่มเสี่ยง (ผู้ป่วยโรคไต โรคหัวใจ ความดันโลหิตสูง เบาหวาน ผู้สูงอายุ เด็กเล็ก และสัตว์เลี้ยงขนาดเล็ก) เลี่ยงดื่มน้ำประปาช่วงนี้ และสำรองน้ำไว้ช่วงที่ค่าปกติ`;
 const SRC = { CP: "เจ้าพระยา", MK: "แม่กลอง" };
 const HOW = { measured: "ค่าวัดจริง", outlet: "คาดจากทางออกโรงผลิต", siphon: "คาดจากไซฟอนรังสิต", samlae: "คาดจากจุดสูบสำแล", samlae_fc: "คาดจากค่าพยากรณ์น้ำดิบสำแล (น้ำขึ้นน้ำลง) ความเชื่อมั่นต่ำกว่าค่าที่ส่งต่อจากค่าวัด", persist: "คงค่าล่าสุด", suspect: "ค่าวัดล่าสุดกระโดดผิดปกติ (อาจเป็นเซนเซอร์) จึงใช้ค่ากลาง 24 ชม. แทน", flat: "ค่าวัดนิ่งสนิทขณะที่น้ำต้นทางเปลี่ยน (อาจเป็นเซนเซอร์ค้าง) จึงใช้ค่าคาดแทน", unknown: "ยังคาดการณ์ไม่ได้" };
@@ -75,10 +81,10 @@ function renderVerify() {
   el.innerHTML = `<p>ระบบเก็บค่าคาดการณ์ที่ออกจริงทุก ${V.every_h} ชม. แล้วเทียบกับค่าที่วัดได้เมื่อถึงเวลา ตั้งแต่ ${since} ออกคาดการณ์ ${V.n_issued.toLocaleString("th-TH")} รอบ ตรวจกับค่าจริงแล้ว ${V.n_matched.toLocaleString("th-TH")} ค่า (อัปเดตทุก ${V.every_h} ชม.)</p>
     <div class="seg" role="group" aria-label="ช่วงเวลา">${[["7d", "7 วัน"], ["30d", "30 วัน"], ["all", "ทั้งหมด"]].map(([k, t]) => `<button class="${k === vWin ? "on" : ""}" data-w="${k}">${t}</button>`).join("")}</div>
     <div class="tscroll"><table class="vtab"><thead><tr><th>ล่วงหน้า</th><th>คลาดเฉลี่ย<br><span class="small">µS/cm</span></th><th>คาดสูง(+)/ต่ำ(−)<br><span class="small">เฉลี่ย</span></th><th>ถ้าใช้ค่าปัจจุบัน<br><span class="small">คลาดเฉลี่ย (ระบบดีกว่า/แย่กว่า)</span></th><th>ค่าจริงอยู่ในช่วง<br><span class="small">เป้า ~83%</span></th><th>เกินขอบบน<br><span class="small">เป้า ~6%</span></th><th>จำนวน</th></tr></thead><tbody>${rows || `<tr><td colspan="7" class="small">ยังไม่มีค่าที่ถึงเวลาตรวจในช่วงนี้</td></tr>`}</tbody></table></div>
-    <p class="small" style="margin:8px 0 0">${ev(1200)}<br>${ev(600)}</p>
+    <p class="small" style="margin:8px 0 0">${ev(1200)}<br>${ev(700)}</p>
     ${dd.length > 1 ? `<svg class="chart" viewBox="0 0 ${Wd} ${Hd}" role="img" aria-label="ความคลาดเคลื่อนเฉลี่ยรายวัน">${g}${lines}</svg>
     <div class="chart-legend">${keys.map(([, c, t]) => `<span><i style="background:${c}"></i>คลาดเฉลี่ย ${t}</span>`).join("")}</div>` : ""}
-    <p class="small" style="margin:6px 0 0">ช่วงน้ำปกติ ค่าแทบไม่เปลี่ยน การใช้ค่าปัจจุบันเป็นค่าคาดจึงชนะได้ง่าย การทดสอบที่สำคัญจริงคือช่วงน้ำเค็มเข้า ซึ่งตารางนี้จะเริ่มมีตัวเลขที่เกณฑ์ 600 และ 1,200 เมื่อเกิดเหตุการณ์ ช่วงความไม่แน่นอนเริ่มเก็บตั้งแต่ 2 พ.ย. 2569</p>`;
+    <p class="small" style="margin:6px 0 0">ช่วงน้ำปกติ ค่าแทบไม่เปลี่ยน การใช้ค่าปัจจุบันเป็นค่าคาดจึงชนะได้ง่าย การทดสอบที่สำคัญจริงคือช่วงน้ำเค็มเข้า ซึ่งตารางนี้จะเริ่มมีตัวเลขที่เกณฑ์ 700 และ 1,200 เมื่อเกิดเหตุการณ์ ช่วงความไม่แน่นอนเริ่มเก็บตั้งแต่ 2 พ.ย. 2569</p>`;
   el.querySelectorAll(".seg button").forEach(b => b.onclick = () => { vWin = b.dataset.w; renderVerify(); });
 }
 
@@ -240,7 +246,7 @@ function setMode(m) {
 
 function levelList() {
   let lo = 0;
-  return NAMES.map((n, i) => { const h = CUTS[i]; const s = `<div class="legend-row" style="display:flex;gap:8px;align-items:center;margin:4px 0">${pinSVG(css(LVC[i]), 14)} <b>${n}</b> <span class="small">${h == null ? "≥ " + lo.toLocaleString() : lo.toLocaleString() + "–" + h.toLocaleString()} µS/cm (~${salt(lo)}${h == null ? "+" : "–" + salt(h)} g/L · คลอไรด์ ${h == null ? "เกิน 250" : lo < 600 ? "ไม่เกิน ~" + Math.round(Math.max(clOf(h), 0) / 10) * 10 : "~" + Math.round(clOf(lo) / 10) * 10 + "–" + Math.round(Math.min(clOf(h), 250) / 10) * 10} มก./ล.)</span></div>`; lo = h; return s; }).join("");
+  return NAMES.map((n, i) => { const h = CUTS[i]; const s = `<div class="legend-row" style="display:flex;gap:8px;align-items:center;margin:4px 0">${pinSVG(css(LVC[i]), 14)} <b>${n}</b> <span class="small">${h == null ? "≥ " + lo.toLocaleString() : lo.toLocaleString() + "–" + h.toLocaleString()} µS/cm (~${salt(lo)}${h == null ? "+" : "–" + salt(h)} g/L${D.level_chloride ? ` · คลอไรด์ ${D.level_chloride[i]} มก./ล.` : ""})</span></div>`; lo = h; return s; }).join("");
 }
 
 // ---------- วาด ----------
@@ -256,7 +262,7 @@ function render() {
   Object.entries(D.stations).forEach(([c, s]) => {
     const v = s.f[hi], li = lvlOf(v);
     markers[c].setIcon(L.divIcon({ className: "mk", html: pinSVG(colorOf(li)), iconSize: [18, 24], iconAnchor: [9, 24], popupAnchor: [0, -22] }));
-    markers[c].bindPopup(`<b>${esc(s.name)}</b> <span class="small">${c}</span><br>EC <b>${fmt(v)}</b> µS/cm${v != null ? ` (~${salt(v)} g/L)<br><span class="small">คลอไรด์ ${clTxt(v)}</span>` : ""}${rangeOf(s, hi) ? `<br><span class="small">ช่วงที่น่าจะเป็น ${fmt(s.lo[hi])}–${fmt(s.hi[hi])} µS/cm</span>` : ""}<br><span class="small">${HOW[s.how[hi]]}</span><br>`
+    markers[c].bindPopup(`<b>${esc(s.name)}</b> <span class="small">${c}</span><br>EC <b>${fmt(v)}</b> µS/cm${v != null ? ` (~${salt(v)} g/L)<br><span class="small">คลอไรด์ ${clTxt(v)} · โซเดียม ${naTxt(v)}</span>` : ""}${rangeOf(s, hi) ? `<br><span class="small">ช่วงที่น่าจะเป็น ${fmt(s.lo[hi])}–${fmt(s.hi[hi])} µS/cm</span>` : ""}<br><span class="small">${HOW[s.how[hi]]}</span><br>`
       + `รับน้ำจากโรงผลิต${s.plant} (${SRC[s.src]})${s.src === "MK" && s.gain > 0 ? ` · ผสมน้ำจากบางเขน ~${Math.round(s.gain * 100)}%` : ""}${s.lag_samlae_h != null ? `<br>น้ำเดินทางจากสำแล ~${Math.round(s.lag_samlae_h)} ชม.` : ""}<br>`
       + `<span class="small">ค่าวัดล่าสุด ${fmt(s.ec)} เมื่อ ${tTH(s.t, { year: undefined })}${s.stale ? " (ข้อมูลค้าง)" : ""}</span>`);
   });
@@ -313,7 +319,7 @@ function renderDetail() {
   el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px 18px;align-items:baseline;justify-content:space-between">
       <div><div class="small">${mode === "dist" ? p.pro : "สาขาการประปา (ขอบเขตตามไฟล์ KMZ)"}</div><h2 style="font-family:var(--f-display);font-size:20px;margin:0">${mode === "dist" ? (p.pro === "กรุงเทพมหานคร" ? "เขต" : "อำเภอ") + p.th : "สาขา" + p.name}</h2></div>
       <div style="display:flex;gap:10px;align-items:baseline"><span class="big" style="color:${colorOf(li)}">${fmt(v)}</span><span class="small">µS/cm${rangeOf(d, hi) ? `<br>ช่วง ${fmt(d.lo[hi])}–${fmt(d.hi[hi])}` : ""}</span>${statusPill(li)}</div></div>
-    <dl class="kv"><dt>ความเค็มโดยประมาณ</dt><dd>${v == null ? "–" : "~" + salt(v) + " g/L"}</dd><dt>คลอไรด์โดยประมาณ</dt><dd>${clTxt(v)}</dd><dt>รับน้ำจาก</dt><dd>${parts}</dd></dl>
+    <dl class="kv"><dt>ความเค็มโดยประมาณ</dt><dd>${v == null ? "–" : "~" + salt(v) + " g/L"}</dd><dt>คลอไรด์โดยประมาณ</dt><dd>${clTxt(v)}</dd><dt>โซเดียมโดยประมาณ</dt><dd>${naTxt(v)}</dd><dt>รับน้ำจาก</dt><dd>${parts}</dd></dl>
     ${li >= 4 ? `<p class="advice">${ADVICE}</p>` : ""}
     <div class="small" style="margin-top:10px">คาดการณ์ (µS/cm)</div>
     <div class="fcrow">${D.horizons.map((h, i) => `<span>${h ? "+" + h : "ตอนนี้"} ${statusLike(d.f[i])}${rangeOf(d, i) ? `<small class="rng">${fmt(d.lo[i])}–${fmt(d.hi[i])}</small>` : ""}</span>`).join("")}</div>
